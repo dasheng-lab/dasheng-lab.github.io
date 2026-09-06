@@ -1,0 +1,714 @@
+[
+  {
+    "name": "cathedral",
+    "source": "cathedral.jpg",
+    "height": 341,
+    "width": 390,
+    "offsets": {
+      "G_to_B": [
+        5,
+        2
+      ],
+      "R_to_B": [
+        12,
+        3
+      ]
+    },
+    "ncc": {
+      "G": 0.95237,
+      "R": 0.90071
+    },
+    "l2_rmse": {
+      "G": 0.30866,
+      "R": 0.44563
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.92654,
+      "mean_l2_rmse": 0.37714
+    },
+    "crop_box": [
+      17,
+      331,
+      23,
+      368
+    ],
+    "output": "cathedral.jpg",
+    "before": "cathedral_before.jpg",
+    "single_scale": {
+      "G_to_B": [
+        5,
+        2
+      ],
+      "R_to_B": [
+        12,
+        3
+      ],
+      "ncc": {
+        "G": 0.95237,
+        "R": 0.90071
+      },
+      "l2_rmse": {
+        "G": 0.30866,
+        "R": 0.44563
+      },
+      "output": "cathedral_single.jpg"
+    },
+    "data_group": "course_samples"
+  },
+  {
+    "name": "church",
+    "source": "church.tif",
+    "height": 3202,
+    "width": 3634,
+    "offsets": {
+      "G_to_B": [
+        26,
+        -2
+      ],
+      "R_to_B": [
+        55,
+        -9
+      ]
+    },
+    "ncc": {
+      "G": 0.81778,
+      "R": 0.77351
+    },
+    "l2_rmse": {
+      "G": 0.60369,
+      "R": 0.67304
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.79564,
+      "mean_l2_rmse": 0.63837
+    },
+    "crop_box": [
+      91,
+      3171,
+      136,
+      3447
+    ],
+    "output": "church.jpg",
+    "before": "church_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "emir",
+    "source": "emir.tif",
+    "height": 3209,
+    "width": 3702,
+    "offsets": {
+      "G_to_B": [
+        50,
+        22
+      ],
+      "R_to_B": [
+        106,
+        40
+      ]
+    },
+    "ncc": {
+      "G": 0.65608,
+      "R": 0.32704
+    },
+    "l2_rmse": {
+      "G": 0.82936,
+      "R": 1.16014
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.49156,
+      "mean_l2_rmse": 0.99475
+    },
+    "crop_box": [
+      169,
+      3076,
+      303,
+      3492
+    ],
+    "output": "emir.jpg",
+    "before": "emir_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "harvesters",
+    "source": "harvesters.tif",
+    "height": 3218,
+    "width": 3683,
+    "offsets": {
+      "G_to_B": [
+        61,
+        17
+      ],
+      "R_to_B": [
+        124,
+        14
+      ]
+    },
+    "ncc": {
+      "G": 0.72342,
+      "R": 0.78307
+    },
+    "l2_rmse": {
+      "G": 0.74375,
+      "R": 0.65869
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.75324,
+      "mean_l2_rmse": 0.70122
+    },
+    "crop_box": [
+      221,
+      3155,
+      223,
+      3413
+    ],
+    "output": "harvesters.jpg",
+    "before": "harvesters_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "icon",
+    "source": "icon.tif",
+    "height": 3244,
+    "width": 3741,
+    "offsets": {
+      "G_to_B": [
+        41,
+        16
+      ],
+      "R_to_B": [
+        90,
+        23
+      ]
+    },
+    "ncc": {
+      "G": 0.71687,
+      "R": 0.67447
+    },
+    "l2_rmse": {
+      "G": 0.75251,
+      "R": 0.80688
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.69567,
+      "mean_l2_rmse": 0.77969
+    },
+    "crop_box": [
+      121,
+      3165,
+      280,
+      3529
+    ],
+    "output": "icon.jpg",
+    "before": "icon_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "ilemselga",
+    "source": "ilemselga.tif",
+    "height": 3270,
+    "width": 3800,
+    "offsets": {
+      "G_to_B": [
+        43,
+        2
+      ],
+      "R_to_B": [
+        129,
+        9
+      ]
+    },
+    "ncc": {
+      "G": 0.75468,
+      "R": 0.64177
+    },
+    "l2_rmse": {
+      "G": 0.70046,
+      "R": 0.84644
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.69822,
+      "mean_l2_rmse": 0.77345
+    },
+    "crop_box": [
+      160,
+      3224,
+      393,
+      3510
+    ],
+    "output": "ilemselga.jpg",
+    "before": "ilemselga_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "melons",
+    "source": "melons.tif",
+    "height": 3241,
+    "width": 3770,
+    "offsets": {
+      "G_to_B": [
+        83,
+        6
+      ],
+      "R_to_B": [
+        179,
+        13
+      ]
+    },
+    "ncc": {
+      "G": 0.85247,
+      "R": 0.91101
+    },
+    "l2_rmse": {
+      "G": 0.54319,
+      "R": 0.42188
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.88174,
+      "mean_l2_rmse": 0.48253
+    },
+    "crop_box": [
+      293,
+      3212,
+      235,
+      3459
+    ],
+    "output": "melons.jpg",
+    "before": "melons_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "monastery",
+    "source": "monastery.jpg",
+    "height": 341,
+    "width": 391,
+    "offsets": {
+      "G_to_B": [
+        -3,
+        2
+      ],
+      "R_to_B": [
+        3,
+        2
+      ]
+    },
+    "ncc": {
+      "G": 0.8405,
+      "R": 0.66113
+    },
+    "l2_rmse": {
+      "G": 0.56481,
+      "R": 0.82325
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.75081,
+      "mean_l2_rmse": 0.69403
+    },
+    "crop_box": [
+      18,
+      311,
+      29,
+      369
+    ],
+    "output": "monastery.jpg",
+    "before": "monastery_before.jpg",
+    "single_scale": {
+      "G_to_B": [
+        -3,
+        2
+      ],
+      "R_to_B": [
+        3,
+        2
+      ],
+      "ncc": {
+        "G": 0.8405,
+        "R": 0.66113
+      },
+      "l2_rmse": {
+        "G": 0.56481,
+        "R": 0.82325
+      },
+      "output": "monastery_single.jpg"
+    },
+    "data_group": "course_samples"
+  },
+  {
+    "name": "religous_painting",
+    "source": "religous_painting.tif",
+    "height": 3193,
+    "width": 3742,
+    "offsets": {
+      "G_to_B": [
+        27,
+        3
+      ],
+      "R_to_B": [
+        68,
+        8
+      ]
+    },
+    "ncc": {
+      "G": 0.69725,
+      "R": 0.65343
+    },
+    "l2_rmse": {
+      "G": 0.77814,
+      "R": 0.83255
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.67534,
+      "mean_l2_rmse": 0.80534
+    },
+    "crop_box": [
+      423,
+      3020,
+      212,
+      3449
+    ],
+    "output": "religous_painting.jpg",
+    "before": "religous_painting_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "self_portrait",
+    "source": "self_portrait.tif",
+    "height": 3251,
+    "width": 3810,
+    "offsets": {
+      "G_to_B": [
+        80,
+        29
+      ],
+      "R_to_B": [
+        176,
+        36
+      ]
+    },
+    "ncc": {
+      "G": 0.64813,
+      "R": 0.70996
+    },
+    "l2_rmse": {
+      "G": 0.83889,
+      "R": 0.76163
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.67905,
+      "mean_l2_rmse": 0.80026
+    },
+    "crop_box": [
+      219,
+      3162,
+      411,
+      3482
+    ],
+    "output": "self_portrait.jpg",
+    "before": "self_portrait_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "siren",
+    "source": "siren.tif",
+    "height": 3250,
+    "width": 3817,
+    "offsets": {
+      "G_to_B": [
+        51,
+        -7
+      ],
+      "R_to_B": [
+        96,
+        -25
+      ]
+    },
+    "ncc": {
+      "G": 0.70208,
+      "R": 0.86407
+    },
+    "l2_rmse": {
+      "G": 0.7719,
+      "R": 0.52141
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.78308,
+      "mean_l2_rmse": 0.64665
+    },
+    "crop_box": [
+      224,
+      3154,
+      288,
+      3537
+    ],
+    "output": "siren.jpg",
+    "before": "siren_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "three_generations",
+    "source": "three_generations.tif",
+    "height": 3209,
+    "width": 3714,
+    "offsets": {
+      "G_to_B": [
+        50,
+        6
+      ],
+      "R_to_B": [
+        112,
+        10
+      ]
+    },
+    "ncc": {
+      "G": 0.83523,
+      "R": 0.87911
+    },
+    "l2_rmse": {
+      "G": 0.57406,
+      "R": 0.49171
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.85717,
+      "mean_l2_rmse": 0.53288
+    },
+    "crop_box": [
+      261,
+      3163,
+      228,
+      3504
+    ],
+    "output": "three_generations.jpg",
+    "before": "three_generations_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "tobolsk",
+    "source": "tobolsk.jpg",
+    "height": 341,
+    "width": 396,
+    "offsets": {
+      "G_to_B": [
+        3,
+        2
+      ],
+      "R_to_B": [
+        6,
+        3
+      ]
+    },
+    "ncc": {
+      "G": 0.92034,
+      "R": 0.85351
+    },
+    "l2_rmse": {
+      "G": 0.39915,
+      "R": 0.54128
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.88692,
+      "mean_l2_rmse": 0.47022
+    },
+    "crop_box": [
+      13,
+      326,
+      30,
+      372
+    ],
+    "output": "tobolsk.jpg",
+    "before": "tobolsk_before.jpg",
+    "single_scale": {
+      "G_to_B": [
+        3,
+        2
+      ],
+      "R_to_B": [
+        6,
+        3
+      ],
+      "ncc": {
+        "G": 0.92034,
+        "R": 0.85351
+      },
+      "l2_rmse": {
+        "G": 0.39915,
+        "R": 0.54128
+      },
+      "output": "tobolsk_single.jpg"
+    },
+    "data_group": "course_samples"
+  },
+  {
+    "name": "wharf",
+    "source": "wharf.tif",
+    "height": 3244,
+    "width": 3761,
+    "offsets": {
+      "G_to_B": [
+        15,
+        -8
+      ],
+      "R_to_B": [
+        83,
+        -17
+      ]
+    },
+    "ncc": {
+      "G": 0.8637,
+      "R": 0.81148
+    },
+    "l2_rmse": {
+      "G": 0.52211,
+      "R": 0.61403
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.83759,
+      "mean_l2_rmse": 0.56807
+    },
+    "crop_box": [
+      176,
+      3205,
+      191,
+      3429
+    ],
+    "output": "wharf.jpg",
+    "before": "wharf_before.jpg",
+    "single_scale": null,
+    "data_group": "course_samples"
+  },
+  {
+    "name": "loc_2018679023",
+    "source": "loc_2018679023.tif",
+    "height": 3244,
+    "width": 3809,
+    "offsets": {
+      "G_to_B": [
+        42,
+        -6
+      ],
+      "R_to_B": [
+        102,
+        7
+      ]
+    },
+    "ncc": {
+      "G": 0.77135,
+      "R": 0.81494
+    },
+    "l2_rmse": {
+      "G": 0.67624,
+      "R": 0.60837
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.79314,
+      "mean_l2_rmse": 0.64231
+    },
+    "crop_box": [
+      239,
+      3011,
+      264,
+      3483
+    ],
+    "output": "loc_2018679023.jpg",
+    "before": "loc_2018679023_before.jpg",
+    "single_scale": null,
+    "data_group": "loc_collection",
+    "collection_item": "2018679023",
+    "source_url": "https://www.loc.gov/item/2018679023/",
+    "plate_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00100/00159u.tif",
+    "title": "V Iasnoe polianie"
+  },
+  {
+    "name": "loc_2018679024",
+    "source": "loc_2018679024.tif",
+    "height": 3196,
+    "width": 3752,
+    "offsets": {
+      "G_to_B": [
+        38,
+        6
+      ],
+      "R_to_B": [
+        73,
+        14
+      ]
+    },
+    "ncc": {
+      "G": 0.80382,
+      "R": 0.77942
+    },
+    "l2_rmse": {
+      "G": 0.62638,
+      "R": 0.6642
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.79162,
+      "mean_l2_rmse": 0.64529
+    },
+    "crop_box": [
+      174,
+      3129,
+      318,
+      3549
+    ],
+    "output": "loc_2018679024.jpg",
+    "before": "loc_2018679024_before.jpg",
+    "single_scale": null,
+    "data_group": "loc_collection",
+    "collection_item": "2018679024",
+    "source_url": "https://www.loc.gov/item/2018679024/",
+    "plate_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00100/00160u.tif",
+    "title": "V Iasnoe polianie (variant)"
+  },
+  {
+    "name": "loc_2018679025",
+    "source": "loc_2018679025.tif",
+    "height": 3240,
+    "width": 3750,
+    "offsets": {
+      "G_to_B": [
+        41,
+        34
+      ],
+      "R_to_B": [
+        95,
+        58
+      ]
+    },
+    "ncc": {
+      "G": 0.70154,
+      "R": 0.83208
+    },
+    "l2_rmse": {
+      "G": 0.77261,
+      "R": 0.57952
+    },
+    "summary_metrics": {
+      "mean_ncc": 0.76681,
+      "mean_l2_rmse": 0.67606
+    },
+    "crop_box": [
+      515,
+      3175,
+      258,
+      3445
+    ],
+    "output": "loc_2018679025.jpg",
+    "before": "loc_2018679025_before.jpg",
+    "single_scale": null,
+    "data_group": "loc_collection",
+    "collection_item": "2018679025",
+    "source_url": "https://www.loc.gov/item/2018679025/",
+    "plate_url": "https://tile.loc.gov/storage-services/master/pnp/prok/00100/00161u.tif",
+    "title": "Na Uralie"
+  }
+]
