@@ -3,8 +3,9 @@
 The implementation is intentionally self contained: channels are split from the
 vertical B/G/R plate, a Gaussian-like 2x2 average pyramid is built, and a
 coarse-to-fine translation search is performed with normalized cross-correlation
-on both intensity and edge magnitude.  The same fixed parameters are used for
-all files.
+on both intensity and edge magnitude. A quality-gated, clipped-Scharr affine
+ECC pass removes small residual glass-plate scale/rotation differences. The same
+fixed parameters are used for all files.
 """
 from __future__ import annotations
 
@@ -15,6 +16,11 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+try:  # OpenCV is used only for a bounded sub-pixel translation refinement.
+    import cv2
+except Exception:  # keep the submitted script runnable with NumPy + Pillow only
+    cv2 = None
 
 
 _HERE = Path(__file__).resolve().parent
@@ -127,6 +133,16 @@ def pair_metrics(base: np.ndarray, moving: np.ndarray, dy: int, dx: int) -> tupl
     return ncc(b, m), l2_rmse(b, m)
 
 
+def aligned_pair_metrics(base: np.ndarray, aligned: np.ndarray) -> tuple[float, float]:
+    """NCC and normalized L2 on a stable center ROI after geometric warping."""
+    h, w = base.shape
+    y0, y1 = int(0.10 * h), int(0.90 * h)
+    x0, x1 = int(0.10 * w), int(0.90 * w)
+    b = base[y0:y1:2, x0:x1:2]
+    m = aligned[y0:y1:2, x0:x1:2]
+    return ncc(b, m), l2_rmse(b, m)
+
+
 def score_shift(base: np.ndarray, moving: np.ndarray, dy: int, dx: int,
                 stride: int = 4) -> float:
     """NCC score on a non-wrapping overlap; 70% intensity, 30% edges."""
@@ -213,6 +229,131 @@ def align_registration(base: np.ndarray, moving: np.ndarray) -> tuple[int, int, 
             if s > best[0]:
                 best = (s, dy, dx)
     return int(best[1]), int(best[2]), float(best[0])
+
+
+def _quality_on_center(base: np.ndarray, moving: np.ndarray) -> float:
+    """Quality check for a refined channel on the photographic center."""
+    h, w = base.shape
+    y0, y1 = int(0.10 * h), int(0.90 * h)
+    x0, x1 = int(0.10 * w), int(0.90 * w)
+    b = base[y0:y1:4, x0:x1:4]
+    m = moving[y0:y1:4, x0:x1:4]
+    return 0.55 * ncc(b, m) + 0.45 * ncc(edge_mag(b), edge_mag(m))
+
+
+def _ecc_edge_feature(a: np.ndarray) -> np.ndarray:
+    """Robust edge feature used by the final geometric refinement."""
+    lo, hi = np.percentile(a, [1.0, 99.0])
+    a = np.clip((a - lo) / max(float(hi - lo), 1e-6), 0.0, 1.0).astype(np.float32)
+    if cv2 is None:
+        return edge_mag(a)
+    gx = cv2.Scharr(a, cv2.CV_32F, 1, 0)
+    gy = cv2.Scharr(a, cv2.CV_32F, 0, 1)
+    mag = cv2.magnitude(gx, gy)
+    # A few scratches or plate-frame pixels should not dominate ECC.
+    mag = np.minimum(mag, np.percentile(mag, 98.0))
+    return mag / (float(mag.std()) + 1e-6)
+
+
+def _warp_center_shift(warp: np.ndarray, shape: tuple[int, int]) -> tuple[float, float]:
+    """Return the representative output shift at the image center."""
+    h, w = shape
+    p = np.array([0.5 * w, 0.5 * h], dtype=np.float32)
+    src = warp[:, :2] @ p + warp[:, 2]
+    dx, dy = p - src
+    return float(dy), float(dx)
+
+
+def _bounded_affine(warp: np.ndarray, shape: tuple[int, int],
+                    seed_dy: float, seed_dx: float) -> bool:
+    """Reject ECC solutions that improve a metric by visibly warping the scene."""
+    h, w = shape
+    linear = warp[:, :2].astype(np.float64)
+    singular = np.linalg.svd(linear, compute_uv=False)
+    if singular.min() < 0.985 or singular.max() > 1.015:
+        return False
+    if abs(float(linear[0, 1])) > 0.012 or abs(float(linear[1, 0])) > 0.012:
+        return False
+    center_dy, center_dx = _warp_center_shift(warp, shape)
+    if abs(center_dy - seed_dy) > 18 or abs(center_dx - seed_dx) > 18:
+        return False
+    center = np.array([0.5 * w, 0.5 * h], dtype=np.float64)
+    max_residual = 0.0
+    for p in (np.array([0.0, 0.0]), np.array([w, 0.0]),
+              np.array([0.0, h]), np.array([w, h])):
+        # Variation relative to the center measures only the affine component;
+        # the intended global translation is not penalized.
+        residual = (np.eye(2) - linear) @ (p - center)
+        max_residual = max(max_residual, float(np.linalg.norm(residual)))
+    return max_residual <= max(12.0, 0.012 * max(h, w))
+
+
+def refine_translation(base: np.ndarray, moving: np.ndarray,
+                       dy: int, dx: int) -> tuple[np.ndarray, float, float, float, str]:
+    """Quality-gated sub-pixel and edge-affine refinement.
+
+    The global phase/NCC estimate is refined on the central 76% of a 4x
+    thumbnail. First, intensity ECC estimates a fractional translation.
+    Second, ECC on clipped Scharr magnitude may correct tiny scale/rotation/
+    shear differences between glass plates. The affine result is accepted
+    only when it gives a clear center-score gain and remains close to a rigid
+    translation. This removes fine color fringes without bending the scene.
+    """
+    baseline = shift_no_wrap(moving, dy, dx)
+    q0 = _quality_on_center(base, baseline)
+    if cv2 is None or min(base.shape) < 900:
+        return baseline, float(dy), float(dx), q0, "integer NCC"
+    h, w = base.shape
+    factor = 4
+    bh, bw = h // factor, w // factor
+    if min(bh, bw) < 160:
+        return baseline, float(dy), float(dx), q0, "integer NCC"
+    b_small = cv2.resize(base, (bw, bh), interpolation=cv2.INTER_AREA).astype(np.float32)
+    m_small = cv2.resize(moving, (bw, bh), interpolation=cv2.INTER_AREA).astype(np.float32)
+    # Normalize the intensity candidate; the edge candidate normalizes itself.
+    for a in (b_small, m_small):
+        lo, hi = np.percentile(a, [1.0, 99.0])
+        a -= float(lo)
+        a /= max(float(hi - lo), 1e-6)
+        np.clip(a, 0.0, 1.0, out=a)
+
+    mask = np.zeros((bh, bw), np.uint8)
+    mask[int(0.12 * bh):int(0.88 * bh), int(0.12 * bw):int(0.88 * bw)] = 1
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-7)
+    best = (baseline.astype(np.float32), float(dy), float(dx), q0, "integer NCC")
+
+    def run_ecc(template: np.ndarray, source: np.ndarray, motion: int):
+        # With WARP_INVERSE_MAP, ECC returns a destination-to-source map;
+        # therefore the known output shift must initialize with a minus sign.
+        warp = np.array([[1.0, 0.0, -dx / factor],
+                         [0.0, 1.0, -dy / factor]], dtype=np.float32)
+        cc, warp = cv2.findTransformECC(template, source, warp, motion,
+                                        criteria, mask, 5)
+        full = warp.copy()
+        full[:, 2] *= factor
+        aligned = cv2.warpAffine(
+            moving, full, (w, h), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+            borderMode=cv2.BORDER_CONSTANT, borderValue=0).astype(np.float32)
+        rdy, rdx = _warp_center_shift(full, (h, w))
+        return aligned, rdy, rdx, _quality_on_center(base, aligned), float(cc), full
+
+    try:
+        aligned, rdy, rdx, q1, _, _ = run_ecc(
+            b_small, m_small, cv2.MOTION_TRANSLATION)
+        if q1 >= best[3] + 0.0005 and abs(rdy - dy) <= 12 and abs(rdx - dx) <= 12:
+            best = (aligned, rdy, rdx, q1, "sub-pixel intensity ECC")
+    except Exception:
+        pass
+
+    try:
+        aligned, rdy, rdx, q1, cc, warp = run_ecc(
+            _ecc_edge_feature(b_small), _ecc_edge_feature(m_small), cv2.MOTION_AFFINE)
+        if (cc >= 0.50 and q1 >= best[3] + 0.010 and
+                _bounded_affine(warp, (h, w), dy, dx)):
+            best = (aligned, rdy, rdx, q1, "bounded edge-affine ECC")
+    except Exception:
+        pass
+    return best
 
 
 def shift_no_wrap(a: np.ndarray, dy: int, dx: int) -> np.ndarray:
@@ -319,10 +460,17 @@ def process(path: Path, out_dir: Path) -> dict:
     plates = load_plate(path)
     base = plates[0]
     # G and R are aligned to B; displacement is the shift applied to that plate.
-    gy, gx, gs = align_registration(base, plates[1])
-    ry, rx, rs = align_registration(base, plates[2])
-    shifts = [(0, 0), (gy, gx), (ry, rx)]
-    shifted = np.stack([shift_no_wrap(p, *s) for p, s in zip(plates, shifts)], axis=-1)
+    gy0, gx0, _ = align_registration(base, plates[1])
+    ry0, rx0, _ = align_registration(base, plates[2])
+    aligned_g, gyf, gxf, _, gmethod = refine_translation(base, plates[1], gy0, gx0)
+    aligned_r, ryf, rxf, _, rmethod = refine_translation(base, plates[2], ry0, rx0)
+    # Keep the B/G/R plate order internally for overlap bookkeeping.  JPEGs
+    # are written as R/G/B below; PIL otherwise interprets B as red.
+    shifts = [(0, 0), (int(round(gyf)), int(round(gxf))),
+              (int(round(ryf)), int(round(rxf)))]
+    shifted_bgr = np.stack([plates[0], aligned_g, aligned_r], axis=-1)
+    shifted = np.stack([shifted_bgr[..., 2], shifted_bgr[..., 1],
+                        shifted_bgr[..., 0]], axis=-1)
     cropped, box = automatic_crop(shifted, shifts)
     corrected = color_correct(cropped)
     stem = path.stem
@@ -333,7 +481,8 @@ def process(path: Path, out_dir: Path) -> dict:
         sgy, sgx, sgs = align_single(base, plates[1], radius=15)
         sry, srx, srs = align_single(base, plates[2], radius=15)
         single_shifts = [(0, 0), (sgy, sgx), (sry, srx)]
-        single_rgb = np.stack([shift_no_wrap(p, *s) for p, s in zip(plates, single_shifts)], axis=-1)
+        single_bgr = np.stack([shift_no_wrap(p, *s) for p, s in zip(plates, single_shifts)], axis=-1)
+        single_rgb = single_bgr[..., ::-1]
         save_jpeg(single_rgb, out_dir / f"{stem}_single.jpg")
         sgn, sgl2 = pair_metrics(base, plates[1], sgy, sgx)
         srn, srl2 = pair_metrics(base, plates[2], sry, srx)
@@ -343,8 +492,10 @@ def process(path: Path, out_dir: Path) -> dict:
                   "output": f"{stem}_single.jpg"}
     # A compact before/after comparison for the report.
     save_jpeg(cropped, out_dir / f"{stem}_before.jpg", max_side=1200)
-    gn, gl2 = pair_metrics(base, plates[1], gy, gx)
-    rn, rl2 = pair_metrics(base, plates[2], ry, rx)
+    gy, gx = shifts[1]
+    ry, rx = shifts[2]
+    gn, gl2 = aligned_pair_metrics(base, aligned_g)
+    rn, rl2 = aligned_pair_metrics(base, aligned_r)
     record = {
         "name": stem, "source": path.name, "height": int(plates.shape[1]), "width": int(plates.shape[2]),
         "offsets": {"G_to_B": [int(gy), int(gx)], "R_to_B": [int(ry), int(rx)]},
@@ -352,6 +503,7 @@ def process(path: Path, out_dir: Path) -> dict:
         "l2_rmse": {"G": round(gl2, 5), "R": round(rl2, 5)},
         "summary_metrics": {"mean_ncc": round((gn + rn) / 2.0, 5),
                              "mean_l2_rmse": round((gl2 + rl2) / 2.0, 5)},
+        "refinement": {"G": gmethod, "R": rmethod},
         "crop_box": list(box), "output": f"{stem}.jpg", "before": f"{stem}_before.jpg",
         "single_scale": single,
         "data_group": "loc_collection" if stem in LOC_METADATA else "course_samples",

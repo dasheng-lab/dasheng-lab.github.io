@@ -15,16 +15,20 @@
       ]
     },
     "ncc": {
-      "G": 0.95237,
-      "R": 0.90071
+      "G": 0.96073,
+      "R": 0.90644
     },
     "l2_rmse": {
-      "G": 0.30866,
-      "R": 0.44563
+      "G": 0.28024,
+      "R": 0.43257
     },
     "summary_metrics": {
-      "mean_ncc": 0.92654,
-      "mean_l2_rmse": 0.37714
+      "mean_ncc": 0.93359,
+      "mean_l2_rmse": 0.35641
+    },
+    "refinement": {
+      "G": "integer NCC",
+      "R": "integer NCC"
     },
     "crop_box": [
       17,
@@ -62,31 +66,35 @@
     "width": 3634,
     "offsets": {
       "G_to_B": [
-        26,
-        -2
+        24,
+        3
       ],
       "R_to_B": [
-        55,
-        -9
+        57,
+        -4
       ]
     },
     "ncc": {
-      "G": 0.81778,
-      "R": 0.77351
+      "G": 0.91496,
+      "R": 0.75723
     },
     "l2_rmse": {
-      "G": 0.60369,
-      "R": 0.67304
+      "G": 0.4124,
+      "R": 0.6968
     },
     "summary_metrics": {
-      "mean_ncc": 0.79564,
-      "mean_l2_rmse": 0.63837
+      "mean_ncc": 0.8361,
+      "mean_l2_rmse": 0.5546
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       91,
-      3171,
+      3158,
       136,
-      3447
+      3454
     ],
     "output": "church.jpg",
     "before": "church_before.jpg",
@@ -100,8 +108,8 @@
     "width": 3702,
     "offsets": {
       "G_to_B": [
-        50,
-        22
+        49,
+        23
       ],
       "R_to_B": [
         106,
@@ -109,20 +117,24 @@
       ]
     },
     "ncc": {
-      "G": 0.65608,
-      "R": 0.32704
+      "G": 0.71845,
+      "R": 0.26693
     },
     "l2_rmse": {
-      "G": 0.82936,
-      "R": 1.16014
+      "G": 0.7504,
+      "R": 1.21084
     },
     "summary_metrics": {
-      "mean_ncc": 0.49156,
-      "mean_l2_rmse": 0.99475
+      "mean_ncc": 0.49269,
+      "mean_l2_rmse": 0.98062
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "integer NCC"
     },
     "crop_box": [
       169,
-      3076,
+      3071,
       303,
       3492
     ],
@@ -138,31 +150,35 @@
     "width": 3683,
     "offsets": {
       "G_to_B": [
-        61,
+        59,
         17
       ],
       "R_to_B": [
-        124,
-        14
+        123,
+        15
       ]
     },
     "ncc": {
-      "G": 0.72342,
-      "R": 0.78307
+      "G": 0.82266,
+      "R": 0.82769
     },
     "l2_rmse": {
-      "G": 0.74375,
-      "R": 0.65869
+      "G": 0.59555,
+      "R": 0.58704
     },
     "summary_metrics": {
-      "mean_ncc": 0.75324,
-      "mean_l2_rmse": 0.70122
+      "mean_ncc": 0.82518,
+      "mean_l2_rmse": 0.59129
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       221,
-      3155,
-      223,
-      3413
+      3158,
+      219,
+      3412
     ],
     "output": "harvesters.jpg",
     "before": "harvesters_before.jpg",
@@ -177,28 +193,32 @@
     "offsets": {
       "G_to_B": [
         41,
-        16
+        18
       ],
       "R_to_B": [
-        90,
+        89,
         23
       ]
     },
     "ncc": {
-      "G": 0.71687,
-      "R": 0.67447
+      "G": 0.87153,
+      "R": 0.6841
     },
     "l2_rmse": {
-      "G": 0.75251,
-      "R": 0.80688
+      "G": 0.50689,
+      "R": 0.79486
     },
     "summary_metrics": {
-      "mean_ncc": 0.69567,
-      "mean_l2_rmse": 0.77969
+      "mean_ncc": 0.77782,
+      "mean_l2_rmse": 0.65087
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
-      121,
-      3165,
+      120,
+      3168,
       280,
       3529
     ],
@@ -214,31 +234,35 @@
     "width": 3800,
     "offsets": {
       "G_to_B": [
-        43,
-        2
+        41,
+        7
       ],
       "R_to_B": [
-        129,
-        9
+        132,
+        10
       ]
     },
     "ncc": {
-      "G": 0.75468,
-      "R": 0.64177
+      "G": 0.74608,
+      "R": 0.58783
     },
     "l2_rmse": {
-      "G": 0.70046,
-      "R": 0.84644
+      "G": 0.71263,
+      "R": 0.90793
     },
     "summary_metrics": {
-      "mean_ncc": 0.69822,
-      "mean_l2_rmse": 0.77345
+      "mean_ncc": 0.66696,
+      "mean_l2_rmse": 0.81028
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
-      160,
-      3224,
-      393,
-      3510
+      163,
+      3222,
+      465,
+      3512
     ],
     "output": "ilemselga.jpg",
     "before": "ilemselga_before.jpg",
@@ -253,29 +277,33 @@
     "offsets": {
       "G_to_B": [
         83,
-        6
+        9
       ],
       "R_to_B": [
-        179,
-        13
+        178,
+        12
       ]
     },
     "ncc": {
-      "G": 0.85247,
-      "R": 0.91101
+      "G": 0.96216,
+      "R": 0.92843
     },
     "l2_rmse": {
-      "G": 0.54319,
-      "R": 0.42188
+      "G": 0.27511,
+      "R": 0.37834
     },
     "summary_metrics": {
-      "mean_ncc": 0.88174,
-      "mean_l2_rmse": 0.48253
+      "mean_ncc": 0.94529,
+      "mean_l2_rmse": 0.32673
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       293,
       3212,
-      235,
+      231,
       3459
     ],
     "output": "melons.jpg",
@@ -299,16 +327,20 @@
       ]
     },
     "ncc": {
-      "G": 0.8405,
-      "R": 0.66113
+      "G": 0.94115,
+      "R": 0.805
     },
     "l2_rmse": {
-      "G": 0.56481,
-      "R": 0.82325
+      "G": 0.34307,
+      "R": 0.6245
     },
     "summary_metrics": {
-      "mean_ncc": 0.75081,
-      "mean_l2_rmse": 0.69403
+      "mean_ncc": 0.87308,
+      "mean_l2_rmse": 0.48378
+    },
+    "refinement": {
+      "G": "integer NCC",
+      "R": "integer NCC"
     },
     "crop_box": [
       18,
@@ -347,30 +379,34 @@
     "offsets": {
       "G_to_B": [
         27,
-        3
+        4
       ],
       "R_to_B": [
         68,
-        8
+        7
       ]
     },
     "ncc": {
-      "G": 0.69725,
-      "R": 0.65343
+      "G": 0.88024,
+      "R": 0.80454
     },
     "l2_rmse": {
-      "G": 0.77814,
-      "R": 0.83255
+      "G": 0.48941,
+      "R": 0.62524
     },
     "summary_metrics": {
-      "mean_ncc": 0.67534,
-      "mean_l2_rmse": 0.80534
+      "mean_ncc": 0.84239,
+      "mean_l2_rmse": 0.55732
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
-      423,
-      3020,
-      212,
-      3449
+      405,
+      2964,
+      213,
+      3450
     ],
     "output": "religous_painting.jpg",
     "before": "religous_painting_before.jpg",
@@ -384,31 +420,35 @@
     "width": 3810,
     "offsets": {
       "G_to_B": [
-        80,
+        77,
         29
       ],
       "R_to_B": [
-        176,
-        36
+        175,
+        37
       ]
     },
     "ncc": {
-      "G": 0.64813,
-      "R": 0.70996
+      "G": 0.85576,
+      "R": 0.81991
     },
     "l2_rmse": {
-      "G": 0.83889,
-      "R": 0.76163
+      "G": 0.53711,
+      "R": 0.60016
     },
     "summary_metrics": {
-      "mean_ncc": 0.67905,
-      "mean_l2_rmse": 0.80026
+      "mean_ncc": 0.83783,
+      "mean_l2_rmse": 0.56863
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       219,
-      3162,
-      411,
-      3482
+      3163,
+      410,
+      3532
     ],
     "output": "self_portrait.jpg",
     "before": "self_portrait_before.jpg",
@@ -422,31 +462,35 @@
     "width": 3817,
     "offsets": {
       "G_to_B": [
-        51,
-        -7
+        49,
+        -5
       ],
       "R_to_B": [
         96,
-        -25
+        -23
       ]
     },
     "ncc": {
-      "G": 0.70208,
-      "R": 0.86407
+      "G": 0.8673,
+      "R": 0.90634
     },
     "l2_rmse": {
-      "G": 0.7719,
-      "R": 0.52141
+      "G": 0.51516,
+      "R": 0.4328
     },
     "summary_metrics": {
-      "mean_ncc": 0.78308,
-      "mean_l2_rmse": 0.64665
+      "mean_ncc": 0.88682,
+      "mean_l2_rmse": 0.47398
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
-      224,
-      3154,
-      288,
-      3537
+      223,
+      3160,
+      286,
+      3542
     ],
     "output": "siren.jpg",
     "before": "siren_before.jpg",
@@ -461,30 +505,34 @@
     "offsets": {
       "G_to_B": [
         50,
-        6
+        15
       ],
       "R_to_B": [
-        112,
-        10
+        109,
+        13
       ]
     },
     "ncc": {
-      "G": 0.83523,
-      "R": 0.87911
+      "G": 0.96311,
+      "R": 0.91594
     },
     "l2_rmse": {
-      "G": 0.57406,
-      "R": 0.49171
+      "G": 0.27162,
+      "R": 0.41002
     },
     "summary_metrics": {
-      "mean_ncc": 0.85717,
-      "mean_l2_rmse": 0.53288
+      "mean_ncc": 0.93953,
+      "mean_l2_rmse": 0.34082
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       261,
       3163,
-      228,
-      3504
+      231,
+      3514
     ],
     "output": "three_generations.jpg",
     "before": "three_generations_before.jpg",
@@ -507,16 +555,20 @@
       ]
     },
     "ncc": {
-      "G": 0.92034,
-      "R": 0.85351
+      "G": 0.91931,
+      "R": 0.85779
     },
     "l2_rmse": {
-      "G": 0.39915,
-      "R": 0.54128
+      "G": 0.40172,
+      "R": 0.53332
     },
     "summary_metrics": {
-      "mean_ncc": 0.88692,
-      "mean_l2_rmse": 0.47022
+      "mean_ncc": 0.88855,
+      "mean_l2_rmse": 0.46752
+    },
+    "refinement": {
+      "G": "integer NCC",
+      "R": "integer NCC"
     },
     "crop_box": [
       13,
@@ -555,30 +607,34 @@
     "offsets": {
       "G_to_B": [
         15,
-        -8
+        -7
       ],
       "R_to_B": [
-        83,
-        -17
+        81,
+        -15
       ]
     },
     "ncc": {
-      "G": 0.8637,
-      "R": 0.81148
+      "G": 0.91143,
+      "R": 0.80401
     },
     "l2_rmse": {
-      "G": 0.52211,
-      "R": 0.61403
+      "G": 0.42088,
+      "R": 0.62608
     },
     "summary_metrics": {
-      "mean_ncc": 0.83759,
-      "mean_l2_rmse": 0.56807
+      "mean_ncc": 0.85772,
+      "mean_l2_rmse": 0.52348
+    },
+    "refinement": {
+      "G": "bounded edge-affine ECC",
+      "R": "bounded edge-affine ECC"
     },
     "crop_box": [
       176,
-      3205,
-      191,
-      3429
+      3203,
+      194,
+      3427
     ],
     "output": "wharf.jpg",
     "before": "wharf_before.jpg",
