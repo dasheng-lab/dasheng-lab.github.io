@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS180 Project 3: flow matching with a pretrained PixNerd model and MNIST UNets trained from scratch.">
+  <title>Fun with Flow Models · CS180 Project 3</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081018'/%3E%3Cpath d='M12 45C22 19 37 52 52 17' fill='none' stroke='%2349d6c6' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='52' cy='17' r='6' fill='%23ff8759'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-copy">
+      <div class="eyebrow">CS 180 · Project 3 · Fall 2026</div>
+      <h1>Fun with<br>Flow Models</h1>
+      <p class="lead">From a pretrained 512×512 text-to-image vector field to MNIST generation from scratch: a reproducible study of interpolation, guidance, image illusions, and conditional flow matching.</p>
+      <div class="badges">
+        <span class="badge">Part A · PixNerd-XXL</span>
+        <span class="badge">Part B · 60,000 MNIST images</span>
+        <span class="badge">Euler integration</span>
+        <span class="badge">All required experiments</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="rubric-nav" aria-label="Project sections"><div class="wrap">
+    <a href="#introduction">Introduction</a><a href="#a11">A.1 Flow basics</a><a href="#a16">A.2 Guidance</a>
+    <a href="#a31">A.3 Editing</a><a href="#a33">A.3.3 Anagrams</a><a href="#a34">A.3.4 Hybrids</a>
+    <a href="#b1">B.1 Denoising</a><a href="#b2">B.2 Time FM</a><a href="#b3">B.3 Class FM</a><a href="#implementation">Reproducibility</a><a href="#conclusion">Conclusion</a>
+  </div></nav>
+
+  <main class="wrap">
+    <section id="introduction">
+      <div class="introduction">
+        <div>
+          <div class="kicker">Introduction</div>
+          <h2>Learning to move noise into images</h2>
+        </div>
+        <p>Flow matching learns a time-dependent velocity field that transports samples from a simple noise distribution toward the image distribution. This project studies that idea at two scales: first by probing and steering a pretrained text-conditioned model, then by implementing and training compact UNets on MNIST. Together, the experiments show how interpolation, conditioning, classifier-free guidance, and frequency-aware composition shape the generated result.</p>
+      </div>
+      <div class="method">
+        <div class="card">
+          <div class="kicker">Core idea</div><h2>A straight probability path</h2>
+          <p>Given clean data <em>x</em><sub>1</sub> and Gaussian noise <em>x</em><sub>0</sub>, flow matching trains a vector field along the straight interpolation between them. At inference time, Euler integration follows the learned velocity from noise at <em>t</em>=0 to data at <em>t</em>=1.</p>
+          <div class="formula">x<sub>t</sub> = (1 − t)x<sub>0</sub> + tx<sub>1</sub><br>u<sub>target</sub> = x<sub>1</sub> − x<sub>0</sub><br>L = E ||u<sub>θ</sub>(x<sub>t</sub>, t) − u<sub>target</sub>||²</div>
+        </div>
+        <div class="card">
+          <div class="kicker">Experiment map</div><h3>Two complementary scales</h3>
+          <table class="mini-table">
+            <tr><th>Part A</th><td>Probe a released, large text-conditioned model: denoising, sampling, CFG, image-to-image editing, visual anagrams, and hybrid images.</td></tr>
+            <tr><th>Part B</th><td>Implement the prescribed UNets and train time- and class-conditioned flow models using only official MNIST data.</td></tr>
+            <tr><th>Controls</th><td>Fixed seeds, matched noise, saved checkpoints, shared display scales, and explicit ablations isolate each design decision.</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="part-divider" id="part-a"><div class="kicker">Part A</div><h2>The Power of Flow Models</h2><p>The required Campanile experiments are paired with Minecraft scenes whose block structure, architecture, creatures, and sharp silhouettes make preservation and semantic drift easy to see.</p></div>
+
+    <section id="a11" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1.1–A.1.2 · Forward process and classical denoising</div><h2>What Gaussian blur cannot recover</h2></div><span class="tag">seed 180</span></div>
+      <p>I sample one Gaussian endpoint and reuse it for every displayed value of <em>t</em>. This makes the interpolation direction fixed: only the clean-image weight changes. For the classical baseline, I first undo the clean-image attenuation by dividing by <em>t</em>, then sweep Gaussian σ ∈ {1,2,4,8,16} and report the lowest-MSE result.</p>
+      <div class="figure-grid">
+        <figure class="full"><a href="assets/a11-training-inputs.png"><img src="assets/a11-training-inputs.png" alt="Aether cliffs interpolated with Gaussian noise"></a><figcaption><strong>Required noisy inputs.</strong> Large terrain masses appear earlier than block texture as <em>t</em> increases.</figcaption></figure>
+        <figure class="full"><a href="assets/campanile-training-inputs.png"><img src="assets/campanile-training-inputs.png" alt="Campanile interpolated with Gaussian noise"></a><figcaption><strong>Campanile control.</strong> The same construction and fixed seed applied to the official image.</figcaption></figure>
+      </div>
+      <div class="figure-grid three">
+        <figure><a href="assets/a12-blur-025.png"><img src="assets/a12-blur-025.png" alt="Gaussian denoising at t 0.25"></a><figcaption><strong>t=0.25, σ=8.</strong> Noise is reduced, but scene identity is nearly erased. MSE 0.0363.</figcaption></figure>
+        <figure><a href="assets/a12-blur-050.png"><img src="assets/a12-blur-050.png" alt="Gaussian denoising at t 0.50"></a><figcaption><strong>t=0.50, σ=4.</strong> The island silhouette returns while block detail collapses. MSE 0.0195.</figcaption></figure>
+        <figure><a href="assets/a12-blur-075.png"><img src="assets/a12-blur-075.png" alt="Gaussian denoising at t 0.75"></a><figcaption><strong>t=0.75, σ=2.</strong> Structure is recognizable but irrecoverably soft. MSE 0.00969.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>Observation.</strong> The MSE-optimal blur grows wider as corruption increases, yet visual fidelity decreases. A low-pass filter only removes energy; a generative velocity field can supply a learned image prior.</div>
+    </section>
+
+    <section id="a13" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1.3 · One-step denoising</div><h2>One velocity estimate to the endpoint</h2></div><span class="tag">a high quality photo</span></div>
+      <p>A single network evaluation extrapolates the noisy state to <em>t</em>=1. Performance improves with larger <em>t</em>, because the input contains more evidence about the intended image.</p>
+      <div class="formula">x̂<sub>1</sub> = x<sub>t</sub> + (1 − t)v<sub>θ</sub>(x<sub>t</sub>, t, c)</div>
+      <div class="figure-grid three">
+        <figure><a href="assets/a13-one-step-t025.png"><img src="assets/a13-one-step-t025.png" alt="One-step denoising at t 0.25"></a><figcaption><strong>t=0.25.</strong> Plausible but weakly tied to the source.</figcaption></figure>
+        <figure><a href="assets/a13-one-step-t050.png"><img src="assets/a13-one-step-t050.png" alt="One-step denoising at t 0.50"></a><figcaption><strong>t=0.50.</strong> Coarse Minecraft geometry is recovered more consistently.</figcaption></figure>
+        <figure><a href="assets/a13-one-step-t075.png"><img src="assets/a13-one-step-t075.png" alt="One-step denoising at t 0.75"></a><figcaption><strong>t=0.75.</strong> Closest reconstruction, with local texture errors.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a14" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1.4 · Velocity diagnostics</div><h2>What the model adds</h2></div><span class="tag">shared RGB scale</span></div>
+      <p>Because both the clean image and original noise are known, the exact path velocity is available. I visualize endpoint updates rather than raw velocities and compute RMS error across RGB at each pixel before display scaling.</p>
+      <div class="formula">v<sub>gt</sub> = x<sub>1</sub> − ε &nbsp;&nbsp;·&nbsp;&nbsp; E<sub>t</sub> = √mean<sub>RGB</sub>(((1−t)(v̂<sub>t</sub>−v<sub>gt</sub>))²)</div>
+      <figure class="compact-original"><a href="assets/a14-velocity-original.png"><img src="assets/a14-velocity-original.png" alt="Original Aether image used for velocity diagnostics"></a><figcaption>The original image is shown once; every row below uses this same clean target and the same saved ε.</figcaption></figure>
+      <div class="figure-grid three">
+        <figure><a href="assets/a14-velocity-t025.png"><img src="assets/a14-velocity-t025.png" alt="Velocity comparison at t 0.25"></a><figcaption><strong>t=0.25.</strong> Large correction; mismatch concentrates on boundaries.</figcaption></figure>
+        <figure><a href="assets/a14-velocity-t050.png"><img src="assets/a14-velocity-t050.png" alt="Velocity comparison at t 0.50"></a><figcaption><strong>t=0.50.</strong> Better agreement across large regions.</figcaption></figure>
+        <figure><a href="assets/a14-velocity-t075.png"><img src="assets/a14-velocity-t075.png" alt="Velocity comparison at t 0.75"></a><figcaption><strong>t=0.75.</strong> Update magnitude and error shrink near the endpoint.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a15" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1.5 · Iterative denoising</div><h2>Re-evaluating the field matters</h2></div><span class="tag">25 Euler updates</span></div>
+      <p>Starting from the same saved <em>t</em>=0.50 input, Euler’s method recomputes velocity after every h=0.02 step. The implementation shortens the last step when necessary so the final state lands exactly at <em>t</em>=1.</p>
+      <div class="formula">x<sub>t+h</sub> = x<sub>t</sub> + h · v<sub>θ</sub>(x<sub>t</sub>, t, c)</div>
+      <div class="figure-grid">
+        <figure class="full"><a href="assets/a15-euler-trajectory.png"><img src="assets/a15-euler-trajectory.png" alt="Iterative denoising trajectory"></a><figcaption>Saved states every five updates show coherent detail forming gradually.</figcaption></figure>
+        <figure class="full"><a href="assets/a15-method-comparison.png"><img src="assets/a15-method-comparison.png" alt="Blur one-step and iterative comparison"></a><figcaption><strong>Matched comparison.</strong> Blur is smooth, one-step is plausible, and iterative integration supplies the strongest learned detail.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a16" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1.6–A.2.1 · Sampling and classifier-free guidance</div><h2>Guidance sharpens the generic prompt</h2></div><span class="tag">w=7 · h=0.02</span></div>
+      <p>Five matched seeds isolate the effect of CFG. Both branches evaluate the same state and time; setting w=0 is asserted to reproduce ordinary conditional prediction exactly.</p>
+      <div class="formula">v<sub>cfg</sub> = v<sub>cond</sub> + w(v<sub>cond</sub> − v<sub>uncond</sub>)</div>
+      <div class="figure-grid">
+        <figure><a href="assets/a16-conditional-samples.png"><img src="assets/a16-conditional-samples.png" alt="Five ordinary conditional samples"></a><figcaption><strong>Ordinary conditioning.</strong> Seeds 180–184.</figcaption></figure>
+        <figure><a href="assets/a21-cfg-samples.png"><img src="assets/a21-cfg-samples.png" alt="Five classifier-free guided samples"></a><figcaption><strong>CFG, w=7.</strong> Stronger contrast and more explicit photographic structure.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a31" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3.1 · Image-to-image projection</div><h2>Starting time controls fidelity</h2></div><span class="tag">7 required t values</span></div>
+      <p>Each sequence uses t<sub>start</sub> ∈ {0.02, 0.04, 0.06, 0.10, 0.14, 0.25, 0.50}. Small values allow semantic reinvention; large values preserve composition and block layout. The official Campanile and two Minecraft scenes receive the complete sweep.</p>
+      <div class="figure-grid">
+        <figure class="full"><a href="assets/a31-campanile-sweep.png"><img src="assets/a31-campanile-sweep.png" alt="Campanile image-to-image sweep"></a><figcaption><strong>Official Campanile.</strong> By t=0.25–0.50 the tower geometry is retained.</figcaption></figure>
+        <figure class="full"><a href="assets/a31-twilight-sweep.png"><img src="assets/a31-twilight-sweep.png" alt="Twilight castle image-to-image sweep"></a><figcaption><strong>Twilight castle.</strong> Silhouette becomes stable before voxel texture.</figcaption></figure>
+      </div>
+      <h3>Downloaded image and drawing-style inputs</h3>
+      <p>The two simple Minecraft drawings use broad shapes and sparse outlines, matching the instructor-approved handwritten-style requirement.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/a31-drawing-castle-sweep.png"><img src="assets/a31-drawing-castle-sweep.png" alt="Drawing-style castle sweep"></a><figcaption>Simple castle drawing at all seven times.</figcaption></figure>
+        <figure><a href="assets/a31-drawing-dragon-sweep.png"><img src="assets/a31-drawing-dragon-sweep.png" alt="Drawing-style ice dragon sweep"></a><figcaption>Simple ice-dragon drawing at all seven times.</figcaption></figure>
+      </div>
+      <div class="keep-block">
+        <h3 id="a31-failures">Earlier material failures</h3>
+        <p>These two diagnostic sweeps are retained at half width. The Aether scene drifts toward unrelated natural-image objects at low t, while the humanoid Warden repeatedly triggers portrait-like generations. Both failures motivated the architecture-focused Frosted Prison replacement.</p>
+        <div class="figure-grid compact-failures">
+          <figure><a href="assets/a31-aether-garden-sweep.png"><img src="assets/a31-aether-garden-sweep.png" alt="Earlier Aether garden image-to-image sweep"></a><figcaption><strong>Aether trial.</strong> Terrain returns only at larger starting times.</figcaption></figure>
+          <figure><a href="assets/a31-warden-sweep.png"><img src="assets/a31-warden-sweep.png" alt="Earlier Deep Dark Warden image-to-image sweep"></a><figcaption><strong>Warden trial.</strong> Portrait bias overwhelms the game character.</figcaption></figure>
+        </div>
+      </div>
+      <h3>Replacing the weak Warden material</h3>
+      <div class="material-case"><img src="assets/input-frosted-prison.jpg" alt="Cataclysm Frosted Prison input"><div><p>Fourteen official Cataclysm screenshots were ranked by subject size, symmetry, contrast, and likelihood of avoiding portrait bias. <strong>Frosted Prison</strong> gave the cleanest structure-preserving result. A matched sweep with seed 12 confirms that t=0.14 gives the strongest balance between a recognizable source layout and a coherent photorealistic edit.</p><p class="prompt">Selected prompt: “a cinematic photograph of an ancient frozen mountain fortress under a clear blue sky”</p></div></div>
+
+      <div id="frosted-sweep" class="paired-sweep">
+        <div class="sweep-heading">
+          <div><div class="kicker">Complete matched sweep</div><h3>Generic prompt vs. descriptive text guidance</h3></div>
+          <span class="tag">seed 12 · CFG w=7 · h=0.02</span>
+        </div>
+        <p>Every column uses the same source, noise seed, starting time, and Euler sampler. The left image uses the generic prompt <code>a high quality photo</code>; the right image uses the selected frozen-fortress prompt. Click any result for the original 512 px image.</p>
+
+        <div class="frosted-grid">
+          <figure><a href="assets/a31-frosted-generic-t002.png"><img src="assets/a31-frosted-generic-t002.png" alt="Frosted Prison generic edit at t equals 0.02"></a><figcaption><strong>t=0.02 · Generic.</strong> Prior-dominated portrait.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t002.png"><img src="assets/a32-frosted-guided-t002.png" alt="Frosted Prison text-guided edit at t equals 0.02"></a><figcaption><strong>t=0.02 · Guided.</strong> Fortress and ice cues appear.</figcaption></figure>
+          <figure><a href="assets/a31-frosted-generic-t004.png"><img src="assets/a31-frosted-generic-t004.png" alt="Frosted Prison generic edit at t equals 0.04"></a><figcaption><strong>t=0.04 · Generic.</strong> Still biased toward a person.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t004.png"><img src="assets/a32-frosted-guided-t004.png" alt="Frosted Prison text-guided edit at t equals 0.04"></a><figcaption><strong>t=0.04 · Guided.</strong> Coherent snowy fortress.</figcaption></figure>
+
+          <figure><a href="assets/a31-frosted-generic-t006.png"><img src="assets/a31-frosted-generic-t006.png" alt="Frosted Prison generic edit at t equals 0.06"></a><figcaption><strong>t=0.06 · Generic.</strong> Unrelated human subject.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t006.png"><img src="assets/a32-frosted-guided-t006.png" alt="Frosted Prison text-guided edit at t equals 0.06"></a><figcaption><strong>t=0.06 · Guided.</strong> Towers and icy peak emerge.</figcaption></figure>
+          <figure><a href="assets/a31-frosted-generic-t010.png"><img src="assets/a31-frosted-generic-t010.png" alt="Frosted Prison generic edit at t equals 0.10"></a><figcaption><strong>t=0.10 · Generic.</strong> Reads as a pale cathedral.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t010.png"><img src="assets/a32-frosted-guided-t010.png" alt="Frosted Prison text-guided edit at t equals 0.10"></a><figcaption><strong>t=0.10 · Guided.</strong> Stable mountain fortress.</figcaption></figure>
+
+          <figure class="selected-result"><a href="assets/a31-frosted-generic-t014.png"><img src="assets/a31-frosted-generic-t014.png" alt="Frosted Prison generic edit at selected t equals 0.14"></a><figcaption><strong>t=0.14 · Generic.</strong> White cathedral drift.</figcaption></figure>
+          <figure class="selected-result"><a href="assets/a32-frosted-guided-t014.png"><img src="assets/a32-frosted-guided-t014.png" alt="Frosted Prison text-guided edit at selected t equals 0.14"></a><figcaption><strong>t=0.14 · Guided · selected.</strong> Best semantic/structure balance.</figcaption></figure>
+          <figure><a href="assets/a31-frosted-generic-t025.png"><img src="assets/a31-frosted-generic-t025.png" alt="Frosted Prison generic edit at t equals 0.25"></a><figcaption><strong>t=0.25 · Generic.</strong> Source geometry dominates.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t025.png"><img src="assets/a32-frosted-guided-t025.png" alt="Frosted Prison text-guided edit at t equals 0.25"></a><figcaption><strong>t=0.25 · Guided.</strong> Clearer ice semantics.</figcaption></figure>
+
+          <figure><a href="assets/a31-frosted-generic-t050.png"><img src="assets/a31-frosted-generic-t050.png" alt="Frosted Prison generic edit at t equals 0.50"></a><figcaption><strong>t=0.50 · Generic.</strong> High source retention.</figcaption></figure>
+          <figure><a href="assets/a32-frosted-guided-t050.png"><img src="assets/a32-frosted-guided-t050.png" alt="Frosted Prison text-guided edit at t equals 0.50"></a><figcaption><strong>t=0.50 · Guided.</strong> Prompt difference narrows.</figcaption></figure>
+        </div>
+        <div class="takeaway"><strong>Sweep conclusion.</strong> Text guidance matters most when the starting time gives the model freedom to reinterpret the source. At large t, source structure dominates; at very small t, the descriptive prompt prevents the generic prior from drifting to people.</div>
+      </div>
+    </section>
+
+    <section id="a32" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3.2 · Text-guided image editing</div><h2>Prompts that describe transferable concepts</h2></div><span class="tag">same 7 t values</span></div>
+      <table class="mini-table">
+        <tr><th>Input</th><th>Prompt</th><th>Design rationale</th></tr>
+        <tr><td>Campanile</td><td><code>a photograph of a rocket on a launch pad</code></td><td>Required tower-to-rocket semantic edit.</td></tr>
+        <tr><td>Twilight castle</td><td><code>a cinematic photograph of a haunted gothic castle in a dark enchanted forest</code></td><td>Architecture and atmosphere likely represented in pretraining.</td></tr>
+        <tr><td>Deep Dark Warden</td><td><code>a cinematic photograph of a bioluminescent stone guardian in an ancient cavern</code></td><td>Translates game cues into generic concepts.</td></tr>
+        <tr><td>Frosted Prison retry</td><td><code>a cinematic photograph of an ancient frozen mountain fortress under a clear blue sky</code></td><td>Matches dominant source cues and avoids introducing people.</td></tr>
+      </table>
+      <div class="figure-grid">
+        <figure class="full"><a href="assets/a32-campanile-text-sweep.png"><img src="assets/a32-campanile-text-sweep.png" alt="Campanile rocket edit sweep"></a><figcaption><strong>Campanile → rocket.</strong> Low t follows the prompt; high t preserves the tower.</figcaption></figure>
+        <figure><a href="assets/a32-twilight-text-sweep.png"><img src="assets/a32-twilight-text-sweep.png" alt="Twilight castle text edit"></a><figcaption>Haunted gothic castle prompt.</figcaption></figure>
+        <figure><a href="assets/a32-warden-text-sweep.png"><img src="assets/a32-warden-text-sweep.png" alt="Warden text edit"></a><figcaption>Guardian prompt; weaker than architecture.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>Prompt-design lesson.</strong> Describe visible geometry, material, environment, and photographic style rather than mod names. “Frozen mountain fortress” is much more reliable than a game-specific entity label.</div>
+    </section>
+
+    <section id="a33" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3.3 · Visual anagrams</div><h2>One image, two orientations</h2></div><span class="tag">180° transform</span></div>
+      <p>At every Euler step, the first prompt predicts velocity upright. The state is rotated, evaluated under the second prompt, and rotated back before averaging.</p>
+      <div class="formula">v(x,t) = ½[v<sub>cfg</sub>(x,t,c₁) + R(v<sub>cfg</sub>(R(x),t,c₂))]</div>
+      <div class="figure-grid">
+        <figure><a href="assets/a33-oldman-campfire.png"><img src="assets/a33-oldman-campfire.png" alt="Old man and campfire anagram"></a><figcaption><strong>Pair 1.</strong> Old man upright; people around a campfire after rotation.</figcaption></figure>
+        <figure><a href="assets/a33-village-horse-seed180.png"><img src="assets/a33-village-horse-seed180.png" alt="Village and horse anagram"></a><figcaption><strong>Pair 2, seed 180.</strong> Snowy village upright; roofs and ridges form a horse after rotation.</figcaption></figure>
+      </div>
+      <p class="note check"><strong>Why this replacement worked.</strong> “Village / horse” shares a long horizontal mass and high-contrast outer contour. The earlier “fortress / fire dragon” pair required incompatible vertical and winged silhouettes.</p>
+    </section>
+
+    <section id="a34" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3.4 · Hybrid images</div><h2>Near detail, distant structure</h2></div><span class="tag">frequency-composed velocity</span></div>
+      <p>The distant prompt supplies low-frequency velocity while the close prompt supplies high-frequency residuals. Downsampling removes fine residuals, allowing the coarse subject to dominate.</p>
+      <div class="formula">v = lowpass(v<sub>distant</sub>) + v<sub>close</sub> − lowpass(v<sub>close</sub>)</div>
+      <div class="figure-grid">
+        <figure class="scale-demo"><a href="assets/a34-skull-waterfall-close.png"><img src="assets/a34-skull-waterfall-close.png" alt="Waterfall and skull hybrid"></a><figcaption><strong>Pair 1.</strong> Waterfall texture at full scale; skull structure when reduced.</figcaption><img class="native-64" src="assets/a34-skull-waterfall-far.png" alt="Skull waterfall at 64 pixels"></figure>
+        <figure class="scale-demo"><a href="assets/a34-ice-dragon-ruins-full.png"><img src="assets/a34-ice-dragon-ruins-full.png" alt="Ruined castle and ice dragon hybrid at full scale"></a><figcaption><strong>Pair 2, seed 180, σ=12.</strong> At full scale the arch and towers read as a ruined castle; at 64 px their silhouette reads as a curled ice dragon.</figcaption><img class="native-64" src="assets/a34-ice-dragon-ruins-64.png" alt="Ruined castle and ice dragon hybrid at 64 pixels"></figure>
+      </div>
+      <div class="takeaway"><strong>Parameter selection.</strong> σ=12 preserves castle edge detail for the close view while assigning a broad silhouette to the dragon. σ=16 and 24 made the far subject stronger but obscured the near interpretation.</div>
+    </section>
+
+    <div class="part-divider" id="part-b"><div class="kicker">Part B</div><h2>Flow Matching from Scratch</h2><p>Only the official MNIST training split is used. The experiments move from an unconditional one-step denoiser to time conditioning, then add one-hot class conditioning, conditional dropout, and classifier-free guidance.</p></div>
+
+    <section id="b1" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.1.1 · Implementing the UNet</div><h2>A prescribed convolutional UNet</h2></div><span class="tag">D=128 · 5 epochs</span></div>
+      <div class="method"><div><p>The network follows the handout’s atomic operations and skip topology: two downsampling stages, a 1×1 bottleneck, two transposed-convolution upsampling stages, and a final single-channel prediction.</p><div class="formula">Conv = Conv2d → BatchNorm → GELU<br>Down = stride-2 Conv + ConvBlock<br>Up = stride-2 ConvTranspose + ConvBlock</div></div><figure><a href="assets/unconditional-arch.png"><img src="assets/unconditional-arch.png" alt="Unconditional UNet architecture"></a><figcaption>Official architecture implemented directly.</figcaption></figure></div>
+      <h3>B.1.2 · Using the UNet as a denoiser</h3>
+      <figure class="full"><a href="assets/b12-noise-levels.png"><img src="assets/b12-noise-levels.png" alt="MNIST Gaussian noise levels"></a><figcaption><strong>Forward corruption.</strong> Same digit and noise direction at σ ∈ {0, 0.2, 0.4, 0.5, 0.6, 0.8, 1}.</figcaption></figure>
+      <h3>B.1.2.1 · Training at σ=0.5</h3>
+      <p>Fresh ε is sampled after every batch is fetched. Adam uses 10<sup>−4</sup>. Microbatch 64 with four-step accumulation preserves effective batch 256 on the 2 GB GPU.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/b121-denoise-loss.png"><img src="assets/b121-denoise-loss.png" alt="Denoising loss"></a><figcaption>Mean epoch loss falls from 0.02095 to 0.00878.</figcaption></figure>
+        <figure><a href="assets/b121-denoise-epoch1.png"><img src="assets/b121-denoise-epoch1.png" alt="Denoising epoch one"></a><figcaption><strong>Epoch 1.</strong> Noisy inputs and predictions.</figcaption></figure>
+        <figure><a href="assets/b121-denoise-epoch5.png"><img src="assets/b121-denoise-epoch5.png" alt="Denoising epoch five"></a><figcaption><strong>Epoch 5.</strong> Cleaner strokes retain class identity.</figcaption></figure>
+      </div>
+      <h3>B.1.2.2 · Out-of-distribution noise</h3>
+      <figure class="full"><a href="assets/b122-ood.png"><img src="assets/b122-ood.png" alt="OOD denoising"></a><figcaption>Best near training σ=0.5. Low-noise inputs are oversmoothed; high-noise inputs exceed the learned corruption level.</figcaption></figure>
+      <h3>B.1.2.3 · Why one-step generation fails</h3>
+      <p>A second UNet receives independent Gaussian noise paired with random clean digits. The input contains no target identity, so MSE rewards the conditional mean rather than diverse samples.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/b123-pure-loss.png"><img src="assets/b123-pure-loss.png" alt="Pure noise loss"></a><figcaption>Loss plateaus near 0.0675.</figcaption></figure>
+        <figure><a href="assets/b123-pure-epoch1.png"><img src="assets/b123-pure-epoch1.png" alt="Pure noise epoch one"></a><figcaption><strong>Epoch 1.</strong> Shared template emerges.</figcaption></figure>
+        <figure><a href="assets/b123-pure-epoch5.png"><img src="assets/b123-pure-epoch5.png" alt="Pure noise epoch five"></a><figcaption><strong>Epoch 5.</strong> Soft centroids, not independent digits.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="b2" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.2.1–B.2.3 · Time-conditioned flow matching</div><h2>Learning velocity along the whole path</h2></div><span class="tag">D=64 · 50 steps</span></div>
+      <h3>B.2.1 · Adding time conditioning</h3>
+      <p>For every batch, x<sub>0</sub>~N(0,I) and continuous t~Uniform[0,1] are resampled. Two FCBlocks map scalar time into channel-wise features. Training predicts x<sub>1</sub>−x<sub>0</sub>; sampling integrates from fresh noise.</p>
+      <div class="method"><figure><a href="assets/conditional-arch.png"><img src="assets/conditional-arch.png" alt="Time-conditioned architecture"></a><figcaption>Official two-point time conditioning.</figcaption></figure><figure><a href="assets/algo1-time-train.png"><img src="assets/algo1-time-train.png" alt="Flow matching training algorithm"></a><figcaption>Continuous-time training objective.</figcaption></figure></div>
+      <h3>B.2.2 · Training the time-conditioned UNet</h3>
+      <p>The epoch-mean MSE falls from 0.1650 to 0.09181 over ten full passes through the 60,000-image training split.</p>
+      <div class="figure-grid"><figure><a href="assets/b23-time-loss.png"><img src="assets/b23-time-loss.png" alt="Time FM loss"></a><figcaption>Adam 10<sup>−2</sup> with exponential decay to 10<sup>−3</sup>.</figcaption></figure><figure><a href="assets/algo2-time-sample.png"><img src="assets/algo2-time-sample.png" alt="Euler sampling algorithm"></a><figcaption>Fifty Euler steps turn fixed Gaussian noise into digits.</figcaption></figure></div>
+      <h3>B.2.3 · Sampling from the time-conditioned UNet</h3>
+      <div class="figure-grid three">
+        <figure><a href="assets/b23-time-epoch1.png"><img src="assets/b23-time-epoch1.png" alt="Time samples epoch one"></a><figcaption><strong>Epoch 1.</strong> Coarse strokes emerge.</figcaption></figure>
+        <figure><a href="assets/b23-time-epoch5.png"><img src="assets/b23-time-epoch5.png" alt="Time samples epoch five"></a><figcaption><strong>Epoch 5.</strong> Most samples become digit-like.</figcaption></figure>
+        <figure><a href="assets/b23-time-epoch10.png"><img src="assets/b23-time-epoch10.png" alt="Time samples epoch ten"></a><figcaption><strong>Epoch 10.</strong> Cleaner strokes; uneven unconditional class coverage remains.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="b3" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.2.4–B.2.6 · Class conditioning and CFG</div><h2>Controllable generation</h2></div><span class="tag">p<sub>uncond</sub>=0.1 · γ=5</span></div>
+      <h3>B.2.4 · Adding class conditioning</h3>
+      <p>A one-hot digit vector receives two FC embeddings parallel to time. During training, 10% are zeroed so one network learns conditional and unconditional velocities. Sampling combines them with CFG.</p>
+      <div class="formula">u<sub>CFG</sub> = u<sub>uncond</sub> + γ(u<sub>cond</sub> − u<sub>uncond</sub>)</div>
+      <h3>B.2.5 · Training the class-conditioned UNet</h3>
+      <p>The epoch-mean MSE decreases from 0.1572 at epoch 1 to 0.08471 at epoch 10. Conditioning makes the fixed-seed grid fully class-legible by epoch 5, while later epochs refine stroke consistency.</p>
+      <div class="figure-grid"><figure><a href="assets/b26-class-loss.png"><img src="assets/b26-class-loss.png" alt="Class FM loss"></a><figcaption>Ten-epoch scheduled training loss.</figcaption></figure><div class="card"><h3>Required sampling protocol</h3><p>Four instances of every digit 0–9 begin from fixed seed 180 and use 300 Euler steps. Changes across epochs therefore reflect learning, not new initialization.</p><p>Adam starts at 10<sup>−2</sup>; ExponentialLR multiplies by 0.1<sup>1/10</sup> after each epoch.</p></div></div>
+      <h3>B.2.6 · Sampling with classifier-free guidance</h3>
+      <div class="figure-grid three">
+        <figure><a href="assets/b26-class-epoch1.png"><img src="assets/b26-class-epoch1.png" alt="Class samples epoch one"></a><figcaption><strong>Epoch 1.</strong> Early label control.</figcaption></figure>
+        <figure><a href="assets/b26-class-epoch5.png"><img src="assets/b26-class-epoch5.png" alt="Class samples epoch five"></a><figcaption><strong>Epoch 5.</strong> Most classes recognizable.</figcaption></figure>
+        <figure><a href="assets/b26-class-epoch10.png"><img src="assets/b26-class-epoch10.png" alt="Class samples epoch ten"></a><figcaption><strong>Epoch 10.</strong> Consistent labels with within-class variation.</figcaption></figure>
+      </div>
+      <div class="ablation-stack">
+        <div class="ablation-intro">
+          <h3 id="b26-ablation">Required ablation · removing the scheduler</h3>
+          <p>Holding 10<sup>−2</sup> constant is unstable. I compensate by using fixed 10<sup>−3</sup> and extending training from 10 to 15 epochs, trading fast early movement for stable late optimization.</p>
+          <figure><a href="assets/b26-nosched-loss.png"><img src="assets/b26-nosched-loss.png" alt="No scheduler loss"></a><figcaption>Constant-rate loss across 15 epochs.</figcaption></figure>
+        </div>
+        <div class="sample-halves">
+          <figure><a href="assets/b26-nosched-epoch15-digits0-4.png"><img src="assets/b26-nosched-epoch15-digits0-4.png" alt="No scheduler epoch fifteen samples for digits zero through four"></a><figcaption><strong>Digits 0–4.</strong> Four fixed-seed samples per class.</figcaption></figure>
+          <figure><a href="assets/b26-nosched-epoch15-digits5-9.png"><img src="assets/b26-nosched-epoch15-digits5-9.png" alt="No scheduler epoch fifteen samples for digits five through nine"></a><figcaption><strong>Digits 5–9.</strong> Same guidance and 300-step sampler.</figcaption></figure>
+        </div>
+      </div>
+      <div class="takeaway"><strong>Ablation conclusion.</strong> The lower constant rate reaches 0.08357 final epoch-mean MSE versus 0.08471 with the scheduler and produces comparably legible classes, but needs five extra epochs. The scheduler is not essential for quality here, but is more compute-efficient.</div>
+    </section>
+
+    <section id="implementation" class="report-section">
+      <div class="section-head"><div><div class="kicker">Reproducibility</div><h2>Implementation and artifacts</h2></div><span class="tag">PyTorch</span></div>
+      <table class="mini-table">
+        <tr><th>Component</th><th>Setting</th><th>Verification</th></tr>
+        <tr><td>Part A model</td><td>MCG-NJU/PixNerd-XXL-P16-T2I, float32</td><td>Text uses <code>model.encode(prompt)</code>; images use supplied preprocessing.</td></tr>
+        <tr><td>Part A solver</td><td>h=0.02, CFG w=7, empty prompt unconditional branch</td><td>Endpoint, shape, finite-value, w=0, and rotation checks.</td></tr>
+        <tr><td>MNIST</td><td>Official train split, 60,000 images, pixels [0,1]</td><td>No personal/external images in Part B.</td></tr>
+        <tr><td>Denoiser</td><td>D=128, σ=0.5, Adam 10<sup>−4</sup>, 5 epochs</td><td>Effective batch 256 via 64×4 accumulation.</td></tr>
+        <tr><td>Time FM</td><td>D=64, batch 64, Adam 10<sup>−2</sup>, ExpLR, 10 epochs</td><td>Continuous t; 50 sampling steps.</td></tr>
+        <tr><td>Class FM</td><td>D=64, p=0.1, γ=5, 300 steps, 10 epochs</td><td>Four samples per digit at epochs 1, 5, 10.</td></tr>
+        <tr><td>No scheduler</td><td>constant 10<sup>−3</sup>, 15 epochs</td><td>Independent checkpoints and matched final grid.</td></tr>
+      </table>
+      <div class="download-grid">
+        <a class="download" href="downloads/parta_solution.ipynb"><strong>Part A notebook</strong><span>Filled lightweight Colab notebook</span></a>
+        <a class="download" href="downloads/parta_frosted_sweep.ipynb"><strong>Frosted sweep notebook</strong><span>Seven generic + seven guided edits, resumable</span></a>
+        <a class="download" href="downloads/partb_solution.ipynb"><strong>Part B notebook</strong><span>Standalone training workflow</span></a>
+        <a class="download" href="downloads/parta_solution.py"><strong>Part A algorithms</strong><span>Flow utilities and diagnostics</span></a>
+        <a class="download" href="downloads/partb_models.py"><strong>Part B models</strong><span>UNets and sampling functions</span></a>
+        <a class="download" href="downloads/run_partb.py"><strong>Part B runner</strong><span>Checkpointed experiment driver</span></a>
+      </div>
+    </section>
+
+    <section id="conclusion" class="report-section conclusion">
+      <div class="section-head"><div><div class="kicker">Conclusion</div><h2>What the experiments show</h2></div><span class="tag">Part A + Part B</span></div>
+      <p>Across both parts, flow matching works best when the model receives enough structure to predict a coherent direction without being forced to invent incompatible semantics. The pretrained experiments expose that tradeoff visually; the MNIST experiments reproduce it from first principles.</p>
+      <div class="conclusion-grid">
+        <div class="card"><h3>Structure precedes detail</h3><p>For image-to-image editing, larger starting times preserve composition and voxel geometry, while smaller values let the learned prior dominate. Architectural subjects survive this transition more reliably than humanoid game characters.</p></div>
+        <div class="card"><h3>Guidance needs a compatible prompt</h3><p>CFG strengthens semantic direction, but it cannot repair a poor match between source geometry and text. Prompts describing material, silhouette, environment, and photographic style were more reliable than mod-specific names.</p></div>
+        <div class="card"><h3>Iterative flow enables generation</h3><p>A one-step pure-noise denoiser collapses toward an average digit. Time conditioning makes iterative transport possible; class conditioning adds control, while the scheduler mainly improves compute efficiency rather than final attainable quality.</p></div>
+      </div>
+      <div class="takeaway"><strong>Overall.</strong> Flow matching is more than noise removal: it learns a direction field over an entire probability path. Starting time, conditioning, guidance, and numerical integration determine how faithfully that field follows source structure or moves toward a requested concept.</div>
+    </section>
+
+    <section class="sources"><h3>References and image provenance</h3><p>The implementation follows the <a href="https://cal-cs180.github.io/fa26/hw/proj3-flow/index.html">CS180 Project 3 handout</a>, official Campanile input, and supplied UNet diagrams. Minecraft screenshots are experimental inputs; source pages and exact URLs are documented in <code>IMAGE_SOURCES_AND_USE.md</code>. Cataclysm alternatives come from the mod’s official CurseForge gallery. The two simple drawing-style inputs were generated for this experiment and are described as drawing-style rather than claimed as physical hand drawings.</p></section>
+  </main>
+
+  <footer><div class="wrap">CS 180 · Project 3 · Fun with Flow Models · Fall 2026</div></footer>
+</body>
+</html>
