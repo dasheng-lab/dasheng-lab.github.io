@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS180 Project 4: homographies, rectification, manual mosaics, MOPS-style feature matching, RANSAC, and full-sequence cylindrical panoramas.">
+  <title>Part A · Image Warping and Mosaicing · CS180 Project 4</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-copy">
+      <div class="eyebrow">CS 180 · Project 4 · Fall 2026</div>
+      <h1>[Auto]Stitching<br>Photo Mosaics</h1>
+      <p class="lead">Manual correspondences, least-squares homographies, inverse warping, rectification, and full-sequence mosaics from three overlapping scenes.</p>
+      <div class="badges">
+        <span class="badge">Part A · 17 annotated pairs</span>
+        <span class="badge">20 source frames · all used</span>
+        <span class="badge">Three complete panoramas</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="rubric-nav" aria-label="Project sections"><div class="wrap">
+    <a href="#introduction">Introduction</a>
+    <a href="#a1">A.1 Capture</a>
+    <a href="#a2">A.2 Homographies</a>
+    <a href="#a3">A.3 Warp + rectify</a>
+    <a href="#a4">A.4 Mosaics</a>
+    <a href="#a5">A.5 Cylinder</a>
+    <a href="#part-a-conclusion">Conclusion</a>
+  </div></nav>
+
+  <main class="wrap">
+    <section id="introduction">
+      <div class="introduction">
+        <div><div class="kicker">Introduction</div><h2>Rotate, register, blend</h2></div>
+        <p>The same scene appears at different image coordinates as a camera turns. Part A estimates this relationship from 16 manually verified landmarks in every adjacent pair. Every panorama shown below uses all frames of its sequence. Compact planar spans are retained as a controlled homography baseline, while a cylindrical output accommodates each full, wider sweep.</p>
+      </div>
+      <div class="method">
+        <div class="card">
+          <div class="kicker">Core geometry</div><h2>One point, three coordinates</h2>
+          <p>A perspective warp maps a homogeneous source point <em>p</em> to a destination point <em>p′</em> using a 3×3 homography. Inverse mapping assigns each output pixel a source sample and avoids holes.</p>
+          <div class="formula">p′ ∼ H p &nbsp;·&nbsp; p = (x, y, 1)ᵀ<br>I<sub>out</sub>(q) = I<sub>src</sub>(H<sup>−1</sup>q)</div>
+        </div>
+        <div class="card">
+          <div class="kicker">Experiment map</div><h3>From points to panoramas</h3>
+          <table class="mini-table">
+            <tr><th>Part A</th><td>Capture three overlapping sequences; hand-check correspondences; solve least-squares homographies; implement two samplers, two rectifications, and feathered mosaics.</td></tr>
+            <tr><th>Extension</th><td>Inverse-project all frames onto a cylinder when the field of view is too wide for one stable planar canvas.</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="part-divider" id="part-a"><div class="kicker">Part A</div><h2>Image warping and mosaicing</h2><p>All point pairs, homographies, rectifications, and images below are generated from the included resized inputs. The original full-resolution captures remain in the project workspace.</p></div>
+
+    <section id="a1" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1 · Shoot and digitize pictures</div><h2>Three overlapping capture sequences</h2></div><span class="tag">5 + 10 + 5 frames</span></div>
+      <p>The street and garage are the two primary real-camera sets. The virtual set supplies a third architectural case with controlled camera rotation and strong shared structures. Neighboring views overlap around buildings, columns, and the decorated gate; sky and moving objects are not used as primary landmarks. Every frame below participates in a full panorama later in the report.</p>
+      <div class="source-strip"><a href="assets/ex1_sources.jpg"><img src="assets/ex1_sources.jpg" alt="All five outdoor source frames"></a></div>
+      <p class="source-caption"><strong>Outdoor street · frames 1–5.</strong> One turning sequence around a city intersection and large glass building.</p>
+      <div class="source-strip"><a href="assets/ex2_sources.jpg"><img src="assets/ex2_sources.jpg" alt="All ten garage source frames"></a></div>
+      <p class="source-caption"><strong>Indoor garage · frames 1–10.</strong> A much wider turn with repeated columns, cars, and ceiling beams.</p>
+      <div class="source-strip"><a href="assets/ex3_sources.jpg"><img src="assets/ex3_sources.jpg" alt="All five virtual architecture source frames"></a></div>
+      <p class="source-caption"><strong>Virtual architecture · frames 1–5.</strong> Shared building details, rather than changing clouds, anchor the correspondences.</p>
+    </section>
+
+    <section id="a2" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.2 · Recover homographies</div><h2>Sixteen constraints per adjacent pair</h2></div><span class="tag">17 pairs checked</span></div>
+      <p>The final JSON contains 16 landmark pairs for each of the 4 outdoor, 9 garage, and 4 virtual transitions. The manually dragged virtual edits are preserved; one imprecise destination point was snapped 10 px left and 4 px up after comparing its local texture. This is a local correction, not a replacement of the user's large moves.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/ex1_manual_points.jpg"><img src="assets/ex1_manual_points.jpg" alt="Outdoor manual correspondence lines"></a><figcaption><strong>Outdoor.</strong> Corners of facades and street structure.</figcaption></figure>
+        <figure><a href="assets/ex2_manual_points.jpg"><img src="assets/ex2_manual_points.jpg" alt="Indoor manual correspondence lines"></a><figcaption><strong>Indoor.</strong> Cars, columns, and ceiling intersections.</figcaption></figure>
+        <figure><a href="assets/ex3_manual_points.jpg"><img src="assets/ex3_manual_points.jpg" alt="Virtual manual correspondence lines"></a><figcaption><strong>Virtual.</strong> The same gate and facade details across the turn.</figcaption></figure>
+      </div>
+      <div class="method">
+        <div class="card">
+          <div class="kicker">Linear system</div><h3>Overdetermined least squares</h3>
+          <p>Fix h<sub>33</sub>=1. Each correspondence (x,y)→(u,v) contributes two rows, so 16 pairs give a 32×8 system. I normalize each point set, solve the eight unknowns with least squares, then denormalize H.</p>
+          <pre>[x y 1 0 0 0 −ux −uy] h = u
+[0 0 0 x y 1 −vx −vy] h = v
+                 A h = b</pre>
+        </div>
+        <div class="card">
+          <div class="kicker">Measured example</div><h3>Outdoor frame 1 → 2</h3>
+          <pre>H = [[ 0.424727,  0.048149, 422.304858],
+     [-0.258685,  0.781745, 108.137303],
+     [-0.000499, -0.000046,   1.000000]]</pre>
+          <p>Sixteen points give a 2.35 px RMS reprojection error. Across all 17 manually annotated pairs, the RMS range is 0.49–2.80 px. The <a href="metrics.json">measurement file</a> contains every fitted matrix and error.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="a3" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3 · Warp the images</div><h2>Inverse sampling and two rectifications</h2></div><span class="tag">NN + bilinear</span></div>
+      <p>For each output pixel, the inverse homography identifies a floating-point source coordinate. My nearest-neighbor routine rounds to one pixel; my bilinear routine weights the surrounding four. Both are implemented directly with NumPy indexing. On one 1080×624 local run, nearest sampling took 0.153 s and bilinear 0.267 s. Bilinear reduces staircase edges, while nearest is cheaper and preserves block boundaries.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/warp_nearest.jpg"><img src="assets/warp_nearest.jpg" alt="Nearest-neighbor perspective warp"></a><figcaption><strong>Nearest neighbor.</strong> One sample per destination pixel.</figcaption></figure>
+        <figure><a href="assets/warp_bilinear.jpg"><img src="assets/warp_bilinear.jpg" alt="Bilinear perspective warp"></a><figcaption><strong>Bilinear.</strong> Weighted combination of four samples.</figcaption></figure>
+      </div>
+      <figure class="compact-original"><a href="assets/warp_zoom.jpg"><img src="assets/warp_zoom.jpg" alt="Enlarged nearest-neighbor and bilinear interpolation comparison"></a><figcaption>Identical region enlarged to make the interpolation difference visible.</figcaption></figure>
+      <h3>Rectification 1 · toward the reference viewpoint</h3>
+      <p>The original 2240×1294 oblique image contains five floor lights also visible in the independent overhead reference. I manually paired the three center lights and the two side lights, fitted an overdetermined floor homography, and warped the original pixels into the reference coordinate system. The panels below use the same reference crop. The center cross and lights now have the reference's orientation and approximate positions; no reference pixels are copied into the reconstruction.</p>
+      <div class="rectification-grid">
+        <figure><a href="assets/rectified_floor_points.jpg"><img src="assets/rectified_floor_points.jpg" alt="Five floor lights marked on the oblique source"></a><figcaption><strong>Source landmarks.</strong> Three center lights and two side lights determine the ground-plane transform.</figcaption></figure>
+        <figure><a href="assets/rectified_floor.jpg"><img src="assets/rectified_floor.jpg" alt="Ground floor projected toward the overhead reference view"></a><figcaption><strong>Reference-aligned reconstruction.</strong> Original source pixels only; pale corners are outside the camera's visible coverage.</figcaption></figure>
+        <figure class="reference"><a href="assets/rectification_reference_crop.jpg"><img src="assets/rectification_reference_crop.jpg" alt="Matching crop of the independent overhead reference"></a><figcaption><strong>Matching reference crop.</strong> A different camera view, shown to compare the central cross and light positions.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>Geometric limit.</strong> A homography can correct the floor plane, but the upright columns and raised blocks sit at other depths and stretch under that same transform. The overhead view reveals surfaces hidden in the oblique photo, so it cannot be reconstructed exactly from this single image. The earlier <a href="assets/rectified_floor_trapezoid_quad.jpg">floor trapezoid</a> and its <a href="assets/rectified_floor_trapezoid.jpg">rectified result</a> remain as a conventional four-corner baseline.</div>
+      <h3>Rectification 2 · the complete angled gate</h3>
+      <p>The first attempt used a partly cropped gate and did not straighten it. Here the fully visible second virtual frame supplies all four facade corners. Mapping those corners to a rectangle makes the side posts vertical and the upper frame level. The curved arch itself remains curved, as its shape belongs to the building.</p>
+      <div class="rectification-grid two">
+        <figure><a href="assets/rectified_facade_quad.jpg"><img src="assets/rectified_facade_quad.jpg" alt="Complete angled gate with four facade corners"></a><figcaption><strong>Source, virtual frame 2.</strong> The selected quadrilateral encloses the full gate.</figcaption></figure>
+        <figure><a href="assets/rectified_facade.jpg"><img src="assets/rectified_facade.jpg" alt="Gate rectified to a front-facing rectangle"></a><figcaption><strong>Rectified gate.</strong> A 650×720 front-facing facade with nearly vertical columns.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a4" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.4 · Blend into mosaics</div><h2>Three complete manual panoramas</h2></div><span class="tag">5 · 10 · 5 frames</span></div>
+      <p>Pairwise transforms are composed into a middle anchor frame. Each image is sampled once on the shared canvas. Overlap colors use a source-edge feather weight, then are divided by the sum of weights. Black borders indicate uncovered rays. The input strips in A.1 show every source frame for the three mosaics below.</p>
+      <div class="formula">C(q) = Σ<sub>i</sub> α<sub>i</sub>(q) I<sub>i</sub>(q) / Σ<sub>i</sub> α<sub>i</sub>(q)</div>
+      <div class="full-panorama">
+        <figure><a href="assets/ex1_manual_full.jpg"><img src="assets/ex1_manual_full.jpg" alt="Full five-frame manual outdoor panorama"></a><figcaption><strong>Outdoor · all 5 frames.</strong> Center frame 3 is the anchor; the complete street sweep extends from the close building to the opposite curb. Click for full resolution.</figcaption></figure>
+        <figure><a href="assets/ex2_manual_full.jpg"><img src="assets/ex2_manual_full.jpg" alt="Full ten-frame manual garage panorama"></a><figcaption><strong>Indoor · all 10 frames.</strong> The ten-frame garage sweep covers the left and right parking rows and the long central aisle.</figcaption></figure>
+        <figure><a href="assets/ex3_manual_full.jpg"><img src="assets/ex3_manual_full.jpg" alt="Full five-frame manual virtual panorama"></a><figcaption><strong>Virtual · all 5 frames.</strong> Architecture connects the surrounding landscape and town buildings.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>What the overlap reveals.</strong> The center of each scene is coherent; residual ghosts appear at nearby cars, columns, and objects with depth. Feathering softens boundaries but does not undo parallax.</div>
+    </section>
+
+    <section id="a5" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.5 · Bells and whistles</div><h2>A cylinder makes wide turns finite</h2></div><span class="tag">inverse projection</span></div>
+      <p>A flat homography canvas becomes unstable at the edges of a wide rotation. The full mosaics in A.4 therefore use a cylindrical target. For each output cylinder pixel, I invert the cylindrical ray to sample the original image directly, then fit a small affine correction to the projected manual points. Focal lengths were selected by minimizing adjacent affine reprojection error on a small grid and checking the visual shape.</p>
+      <div class="formula">x<sub>cyl</sub> = f atan((x−c<sub>x</sub>)/f) &nbsp;·&nbsp;
+      y<sub>cyl</sub> = f(y−c<sub>y</sub>)/√((x−c<sub>x</sub>)²+f²)</div>
+      <div class="param-list"><span>Outdoor f = 775 px</span><span>Indoor f = 825 px</span><span>Virtual f = 450 px</span><span>Valid center rectangle only</span></div>
+      <p>The original projective homography pipeline also produces these compact three-frame planar baselines. They show why a flat target is useful over a moderate range; the full cylindrical results above use every frame.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/ex1_manual.jpg"><img src="assets/ex1_manual.jpg" alt="Outdoor planar three-frame baseline"></a><figcaption><strong>Outdoor planar baseline · frames 1–3.</strong> Direct H composition and feathering.</figcaption></figure>
+        <figure><a href="assets/ex2_manual.jpg"><img src="assets/ex2_manual.jpg" alt="Garage planar three-frame baseline"></a><figcaption><strong>Garage planar baseline · frames 4–6.</strong> A short span avoids extreme projective stretching.</figcaption></figure>
+      </div>
+    </section>
+
+
+    <section id="part-a-conclusion" class="report-section">
+      <div class="section-head"><div><div class="kicker">Part A conclusion</div><h2>Manual geometry at full sweep</h2></div><span class="tag">A.1–A.5</span></div>
+      <p>Sixteen checked point pairs for every adjacent pair support the homographies and the three complete mosaics. The stronger floor rectification reaches the reference's orientation for the visible ground plane; hidden surfaces and tall columns remain outside the single-plane model. Source-edge feathering handles ordinary overlap but nearby objects retain parallax ghosts. Cylindrical projection keeps all 5, 10, and 5 source frames on finite canvases.</p>
+      <div class="takeaway"><strong>Next:</strong> <a href="index.html#part-b">Part B</a> replaces the hand-checked point selection with Harris corners, descriptors, ratio matching, and RANSAC, using the same images.</div>
+    </section>
+  </main>
+  <footer class="wrap">CS 180 · Project 4 Part A · Manual image warping and mosaicing · <a href="index.html">Complete A+B report</a>.</footer>
+</body>
+</html>

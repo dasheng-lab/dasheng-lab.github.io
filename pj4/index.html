@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS180 Project 4: homographies, rectification, manual mosaics, MOPS-style feature matching, RANSAC, and full-sequence cylindrical panoramas.">
+  <title>[Auto]Stitching Photo Mosaics · CS180 Project 4</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-copy">
+      <div class="eyebrow">CS 180 · Project 4 · Fall 2026</div>
+      <h1>[Auto]Stitching<br>Photo Mosaics</h1>
+      <p class="lead">From hand-checked point pairs to automatically recovered panoramas: a reproducible study of homographies, inverse warping, feature descriptors, robust matching, and cylindrical projection.</p>
+      <div class="badges">
+        <span class="badge">Part A · 17 annotated pairs</span>
+        <span class="badge">Part B · Harris + ANMS + RANSAC</span>
+        <span class="badge">20 source frames · all used</span>
+        <span class="badge">Three complete panoramas</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="rubric-nav" aria-label="Project sections"><div class="wrap">
+    <a href="#introduction">Introduction</a>
+    <a href="#a1">A.1 Capture</a>
+    <a href="#a2">A.2 Homographies</a>
+    <a href="#a3">A.3 Warp + rectify</a>
+    <a href="#a4">A.4 Mosaics</a>
+    <a href="#a5">A.5 Cylinder</a>
+    <a href="#b1">B.1 Corners</a>
+    <a href="#b2">B.2 Descriptors</a>
+    <a href="#b3">B.3 Matching</a>
+    <a href="#b4">B.4 RANSAC</a>
+    <a href="#conclusion">Conclusion</a>
+  </div></nav>
+
+  <main class="wrap">
+    <section id="introduction">
+      <div class="introduction">
+        <div><div class="kicker">Introduction</div><h2>Rotate, register, blend</h2></div>
+        <p>The same scene appears at different image coordinates as a camera turns. Part A estimates this relationship from 16 manually verified landmarks in every adjacent pair; Part B finds those landmarks automatically. Every panorama shown below uses all frames of its sequence. Compact planar spans are retained as a controlled homography baseline, while a cylindrical output accommodates each full, wider sweep.</p>
+      </div>
+      <div class="method">
+        <div class="card">
+          <div class="kicker">Core geometry</div><h2>One point, three coordinates</h2>
+          <p>A perspective warp maps a homogeneous source point <em>p</em> to a destination point <em>p′</em> using a 3×3 homography. Inverse mapping assigns each output pixel a source sample and avoids holes.</p>
+          <div class="formula">p′ ∼ H p &nbsp;·&nbsp; p = (x, y, 1)ᵀ<br>I<sub>out</sub>(q) = I<sub>src</sub>(H<sup>−1</sup>q)</div>
+        </div>
+        <div class="card">
+          <div class="kicker">Experiment map</div><h3>Two ways to find the geometry</h3>
+          <table class="mini-table">
+            <tr><th>Part A</th><td>Capture three overlapping sequences; hand-check correspondences; solve least-squares homographies; implement two samplers, two rectifications, and feathered mosaics.</td></tr>
+            <tr><th>Part B</th><td>Detect Harris corners, apply ANMS, form normalized 8×8 descriptors, ratio-match, and fit four-point RANSAC homographies before mosaicing.</td></tr>
+            <tr><th>Extension</th><td>Inverse-project all frames onto a cylinder when the field of view is too wide for one stable planar canvas.</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="part-divider" id="part-a"><div class="kicker">Part A</div><h2>Image warping and mosaicing</h2><p>All point pairs, homographies, rectifications, and images below are generated from the included resized inputs. The original full-resolution captures remain in the project workspace.</p></div>
+
+    <section id="a1" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.1 · Shoot and digitize pictures</div><h2>Three overlapping capture sequences</h2></div><span class="tag">5 + 10 + 5 frames</span></div>
+      <p>The street and garage are the two primary real-camera sets. The virtual set supplies a third architectural case with controlled camera rotation and strong shared structures. Neighboring views overlap around buildings, columns, and the decorated gate; sky and moving objects are not used as primary landmarks. Every frame below participates in a full panorama later in the report.</p>
+      <div class="source-strip"><a href="assets/ex1_sources.jpg"><img src="assets/ex1_sources.jpg" alt="All five outdoor source frames"></a></div>
+      <p class="source-caption"><strong>Outdoor street · frames 1–5.</strong> One turning sequence around a city intersection and large glass building.</p>
+      <div class="source-strip"><a href="assets/ex2_sources.jpg"><img src="assets/ex2_sources.jpg" alt="All ten garage source frames"></a></div>
+      <p class="source-caption"><strong>Indoor garage · frames 1–10.</strong> A much wider turn with repeated columns, cars, and ceiling beams.</p>
+      <div class="source-strip"><a href="assets/ex3_sources.jpg"><img src="assets/ex3_sources.jpg" alt="All five virtual architecture source frames"></a></div>
+      <p class="source-caption"><strong>Virtual architecture · frames 1–5.</strong> Shared building details, rather than changing clouds, anchor the correspondences.</p>
+    </section>
+
+    <section id="a2" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.2 · Recover homographies</div><h2>Sixteen constraints per adjacent pair</h2></div><span class="tag">17 pairs checked</span></div>
+      <p>The final JSON contains 16 landmark pairs for each of the 4 outdoor, 9 garage, and 4 virtual transitions. The manually dragged virtual edits are preserved; one imprecise destination point was snapped 10 px left and 4 px up after comparing its local texture. This is a local correction, not a replacement of the user's large moves.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/ex1_manual_points.jpg"><img src="assets/ex1_manual_points.jpg" alt="Outdoor manual correspondence lines"></a><figcaption><strong>Outdoor.</strong> Corners of facades and street structure.</figcaption></figure>
+        <figure><a href="assets/ex2_manual_points.jpg"><img src="assets/ex2_manual_points.jpg" alt="Indoor manual correspondence lines"></a><figcaption><strong>Indoor.</strong> Cars, columns, and ceiling intersections.</figcaption></figure>
+        <figure><a href="assets/ex3_manual_points.jpg"><img src="assets/ex3_manual_points.jpg" alt="Virtual manual correspondence lines"></a><figcaption><strong>Virtual.</strong> The same gate and facade details across the turn.</figcaption></figure>
+      </div>
+      <div class="method">
+        <div class="card">
+          <div class="kicker">Linear system</div><h3>Overdetermined least squares</h3>
+          <p>Fix h<sub>33</sub>=1. Each correspondence (x,y)→(u,v) contributes two rows, so 16 pairs give a 32×8 system. I normalize each point set, solve the eight unknowns with least squares, then denormalize H.</p>
+          <pre>[x y 1 0 0 0 −ux −uy] h = u
+[0 0 0 x y 1 −vx −vy] h = v
+                 A h = b</pre>
+        </div>
+        <div class="card">
+          <div class="kicker">Measured example</div><h3>Outdoor frame 1 → 2</h3>
+          <pre>H = [[ 0.424727,  0.048149, 422.304858],
+     [-0.258685,  0.781745, 108.137303],
+     [-0.000499, -0.000046,   1.000000]]</pre>
+          <p>Sixteen points give a 2.35 px RMS reprojection error. Across all 17 manually annotated pairs, the RMS range is 0.49–2.80 px. The <a href="metrics.json">measurement file</a> contains every fitted matrix and error.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="a3" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.3 · Warp the images</div><h2>Inverse sampling and two rectifications</h2></div><span class="tag">NN + bilinear</span></div>
+      <p>For each output pixel, the inverse homography identifies a floating-point source coordinate. My nearest-neighbor routine rounds to one pixel; my bilinear routine weights the surrounding four. Both are implemented directly with NumPy indexing. On one 1080×624 local run, nearest sampling took 0.153 s and bilinear 0.267 s. Bilinear reduces staircase edges, while nearest is cheaper and preserves block boundaries.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/warp_nearest.jpg"><img src="assets/warp_nearest.jpg" alt="Nearest-neighbor perspective warp"></a><figcaption><strong>Nearest neighbor.</strong> One sample per destination pixel.</figcaption></figure>
+        <figure><a href="assets/warp_bilinear.jpg"><img src="assets/warp_bilinear.jpg" alt="Bilinear perspective warp"></a><figcaption><strong>Bilinear.</strong> Weighted combination of four samples.</figcaption></figure>
+      </div>
+      <figure class="compact-original"><a href="assets/warp_zoom.jpg"><img src="assets/warp_zoom.jpg" alt="Enlarged nearest-neighbor and bilinear interpolation comparison"></a><figcaption>Identical region enlarged to make the interpolation difference visible.</figcaption></figure>
+      <h3>Rectification 1 · toward the reference viewpoint</h3>
+      <p>The original 2240×1294 oblique image contains five floor lights also visible in the independent overhead reference. I manually paired the three center lights and the two side lights, fitted an overdetermined floor homography, and warped the original pixels into the reference coordinate system. The panels below use the same reference crop. The center cross and lights now have the reference's orientation and approximate positions; no reference pixels are copied into the reconstruction.</p>
+      <div class="rectification-grid">
+        <figure><a href="assets/rectified_floor_points.jpg"><img src="assets/rectified_floor_points.jpg" alt="Five floor lights marked on the oblique source"></a><figcaption><strong>Source landmarks.</strong> Three center lights and two side lights determine the ground-plane transform.</figcaption></figure>
+        <figure><a href="assets/rectified_floor.jpg"><img src="assets/rectified_floor.jpg" alt="Ground floor projected toward the overhead reference view"></a><figcaption><strong>Reference-aligned reconstruction.</strong> Original source pixels only; pale corners are outside the camera's visible coverage.</figcaption></figure>
+        <figure class="reference"><a href="assets/rectification_reference_crop.jpg"><img src="assets/rectification_reference_crop.jpg" alt="Matching crop of the independent overhead reference"></a><figcaption><strong>Matching reference crop.</strong> A different camera view, shown to compare the central cross and light positions.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>Geometric limit.</strong> A homography can correct the floor plane, but the upright columns and raised blocks sit at other depths and stretch under that same transform. The overhead view reveals surfaces hidden in the oblique photo, so it cannot be reconstructed exactly from this single image. The earlier <a href="assets/rectified_floor_trapezoid_quad.jpg">floor trapezoid</a> and its <a href="assets/rectified_floor_trapezoid.jpg">rectified result</a> remain as a conventional four-corner baseline.</div>
+      <h3>Rectification 2 · the complete angled gate</h3>
+      <p>The first attempt used a partly cropped gate and did not straighten it. Here the fully visible second virtual frame supplies all four facade corners. Mapping those corners to a rectangle makes the side posts vertical and the upper frame level. The curved arch itself remains curved, as its shape belongs to the building.</p>
+      <div class="rectification-grid two">
+        <figure><a href="assets/rectified_facade_quad.jpg"><img src="assets/rectified_facade_quad.jpg" alt="Complete angled gate with four facade corners"></a><figcaption><strong>Source, virtual frame 2.</strong> The selected quadrilateral encloses the full gate.</figcaption></figure>
+        <figure><a href="assets/rectified_facade.jpg"><img src="assets/rectified_facade.jpg" alt="Gate rectified to a front-facing rectangle"></a><figcaption><strong>Rectified gate.</strong> A 650×720 front-facing facade with nearly vertical columns.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="a4" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.4 · Blend into mosaics</div><h2>Three complete manual panoramas</h2></div><span class="tag">5 · 10 · 5 frames</span></div>
+      <p>Pairwise transforms are composed into a middle anchor frame. Each image is sampled once on the shared canvas. Overlap colors use a source-edge feather weight, then are divided by the sum of weights. Black borders indicate uncovered rays. The input strips in A.1 show every source frame for the three mosaics below.</p>
+      <div class="formula">C(q) = Σ<sub>i</sub> α<sub>i</sub>(q) I<sub>i</sub>(q) / Σ<sub>i</sub> α<sub>i</sub>(q)</div>
+      <div class="full-panorama">
+        <figure><a href="assets/ex1_manual_full.jpg"><img src="assets/ex1_manual_full.jpg" alt="Full five-frame manual outdoor panorama"></a><figcaption><strong>Outdoor · all 5 frames.</strong> Center frame 3 is the anchor; the complete street sweep extends from the close building to the opposite curb. Click for full resolution.</figcaption></figure>
+        <figure><a href="assets/ex2_manual_full.jpg"><img src="assets/ex2_manual_full.jpg" alt="Full ten-frame manual garage panorama"></a><figcaption><strong>Indoor · all 10 frames.</strong> The ten-frame garage sweep covers the left and right parking rows and the long central aisle.</figcaption></figure>
+        <figure><a href="assets/ex3_manual_full.jpg"><img src="assets/ex3_manual_full.jpg" alt="Full five-frame manual virtual panorama"></a><figcaption><strong>Virtual · all 5 frames.</strong> Architecture connects the surrounding landscape and town buildings.</figcaption></figure>
+      </div>
+      <div class="takeaway"><strong>What the overlap reveals.</strong> The center of each scene is coherent; residual ghosts appear at nearby cars, columns, and objects with depth. Feathering softens boundaries but does not undo parallax.</div>
+    </section>
+
+    <section id="a5" class="report-section">
+      <div class="section-head"><div><div class="kicker">A.5 · Bells and whistles</div><h2>A cylinder makes wide turns finite</h2></div><span class="tag">inverse projection</span></div>
+      <p>A flat homography canvas becomes unstable at the edges of a wide rotation. The full mosaics in A.4 therefore use a cylindrical target. For each output cylinder pixel, I invert the cylindrical ray to sample the original image directly, then fit a small affine correction to the projected manual points. Focal lengths were selected by minimizing adjacent affine reprojection error on a small grid and checking the visual shape.</p>
+      <div class="formula">x<sub>cyl</sub> = f atan((x−c<sub>x</sub>)/f) &nbsp;·&nbsp;
+      y<sub>cyl</sub> = f(y−c<sub>y</sub>)/√((x−c<sub>x</sub>)²+f²)</div>
+      <div class="param-list"><span>Outdoor f = 775 px</span><span>Indoor f = 825 px</span><span>Virtual f = 450 px</span><span>Valid center rectangle only</span></div>
+      <p>The original projective homography pipeline also produces these compact three-frame planar baselines. They show why a flat target is useful over a moderate range; the full cylindrical results above use every frame.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/ex1_manual.jpg"><img src="assets/ex1_manual.jpg" alt="Outdoor planar three-frame baseline"></a><figcaption><strong>Outdoor planar baseline · frames 1–3.</strong> Direct H composition and feathering.</figcaption></figure>
+        <figure><a href="assets/ex2_manual.jpg"><img src="assets/ex2_manual.jpg" alt="Garage planar three-frame baseline"></a><figcaption><strong>Garage planar baseline · frames 4–6.</strong> A short span avoids extreme projective stretching.</figcaption></figure>
+      </div>
+    </section>
+
+    <div class="part-divider" id="part-b"><div class="kicker">Part B</div><h2>Automatic feature matching</h2><p>No manual point coordinates enter the Part B path. The same images are processed by Harris detection, ANMS, MOPS-style descriptors, ratio matching, and four-point RANSAC before each full sequence is stitched.</p></div>
+
+    <section id="b1" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.1 · Harris and ANMS</div><h2>Find corners, then spread them out</h2></div><span class="tag">single scale</span></div>
+      <p>I blur grayscale intensity, compute x/y derivatives, and score the second-moment matrix with R = det(M) − 0.04 tr(M)². Harris local maxima cluster around textured regions. Adaptive nonmaximum suppression ranks each corner by distance to a significantly stronger neighbor, increasing spatial coverage before matching.</p>
+      <div class="figure-grid">
+        <figure><a href="assets/ex1_harris.jpg"><img src="assets/ex1_harris.jpg" alt="Outdoor Harris candidates before ANMS"></a><figcaption><strong>Before ANMS.</strong> 450 detected outdoor corners, concentrated in high-contrast structure.</figcaption></figure>
+        <figure><a href="assets/ex1_anms.jpg"><img src="assets/ex1_anms.jpg" alt="Outdoor points after ANMS"></a><figcaption><strong>After ANMS.</strong> A 220-point visualization budget makes the spatial redistribution clear. Actual matching uses up to 550 selected points.</figcaption></figure>
+      </div>
+      <div class="figure-grid slim">
+        <figure><a href="assets/ex2_anms.jpg"><img src="assets/ex2_anms.jpg" alt="Garage points after ANMS"></a><figcaption>Garage: selected corners span ceiling, cars, and columns.</figcaption></figure>
+        <figure><a href="assets/ex3_anms.jpg"><img src="assets/ex3_anms.jpg" alt="Virtual architecture points after ANMS"></a><figcaption>Virtual scene: corners favor the gate and building edges.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="b2" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.2 · Feature descriptors</div><h2>Normalize local appearance</h2></div><span class="tag">40×40 → 8×8</span></div>
+      <p>A blurred 40×40 axis-aligned support is reduced to an 8×8 descriptor. Subtracting its mean removes additive brightness; dividing by its L2 norm reduces contrast dependence. This follows the simplified patch descriptor requested by the course rather than a rotation-invariant version.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/ex1_descriptors.jpg"><img src="assets/ex1_descriptors.jpg" alt="Outdoor descriptor examples"></a><figcaption><strong>Outdoor.</strong> Enlarged 8×8 patch examples.</figcaption></figure>
+        <figure><a href="assets/ex2_descriptors.jpg"><img src="assets/ex2_descriptors.jpg" alt="Garage descriptor examples"></a><figcaption><strong>Indoor.</strong> Patch diversity despite repeated beams.</figcaption></figure>
+        <figure><a href="assets/ex3_descriptors.jpg"><img src="assets/ex3_descriptors.jpg" alt="Minecraft descriptor examples"></a><figcaption><strong>Virtual.</strong> Block edges and facade texture.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="b3" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.3 · Feature matching</div><h2>Appearance suggests candidate pairs</h2></div><span class="tag">ratio = 0.78</span></div>
+      <p>For each descriptor I compare its first and second nearest neighbors, retain it when the distance ratio is below 0.78, and require a mutual nearest match. The result is still imperfect; geometry provides the final check. The representative panels below show pre-RANSAC candidates from each sequence.</p>
+      <div class="figure-grid three">
+        <figure><a href="assets/ex1_matches.jpg"><img src="assets/ex1_matches.jpg" alt="Outdoor tentative descriptor matches"></a><figcaption><strong>Outdoor pair 1:</strong> 41 tentative matches.</figcaption></figure>
+        <figure><a href="assets/ex2_matches.jpg"><img src="assets/ex2_matches.jpg" alt="Garage tentative descriptor matches"></a><figcaption><strong>Garage pair 4:</strong> 115 tentative matches.</figcaption></figure>
+        <figure><a href="assets/ex3_matches.jpg"><img src="assets/ex3_matches.jpg" alt="Virtual tentative descriptor matches"></a><figcaption><strong>Virtual pair 1:</strong> 46 tentative matches.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="b4" class="report-section">
+      <div class="section-head"><div><div class="kicker">B.4 · Four-point RANSAC</div><h2>Reject outliers; stitch all frames</h2></div><span class="tag">3 automatic mosaics</span></div>
+      <p>Each trial samples four matches, estimates H with my least-squares solver, and counts points whose forward reprojection error is below 4 px. The best set is refitted on all inliers. The same inliers are projected onto the cylinder for full-sequence placement. No high-level homography, perspective warp, or RANSAC function is called.</p>
+      <div class="param-list"><span>4 sampled matches</span><span>4 px inlier radius</span><span>Up to 2400 trials</span><span>Refit all inliers</span><span>Feathered final blend</span></div>
+      <div class="figure-grid three">
+        <figure><a href="assets/ex1_ransac.jpg"><img src="assets/ex1_ransac.jpg" alt="Outdoor matches after RANSAC"></a><figcaption><strong>Outdoor.</strong> 34 of 41 representative matches remain.</figcaption></figure>
+        <figure><a href="assets/ex2_ransac.jpg"><img src="assets/ex2_ransac.jpg" alt="Garage matches after RANSAC"></a><figcaption><strong>Indoor.</strong> 107 of 115 representative matches remain.</figcaption></figure>
+        <figure><a href="assets/ex3_ransac.jpg"><img src="assets/ex3_ransac.jpg" alt="Virtual matches after RANSAC"></a><figcaption><strong>Virtual.</strong> 27 of 46 representative matches remain. Green denotes an inlier; coral denotes an outlier.</figcaption></figure>
+      </div>
+      <h3>All adjacent pairs were processed</h3>
+      <div class="metric-grid">
+        <div class="card"><div class="kicker">Outdoor · 5 frames</div><table class="metric-table"><tr><th>Pair</th><th>Matches</th><th>Inliers</th></tr><tr><td>1→2</td><td>41</td><td>34</td></tr><tr><td>2→3</td><td>157</td><td>130</td></tr><tr><td>3→4</td><td>122</td><td>89</td></tr><tr><td>4→5</td><td>97</td><td>72</td></tr></table></div>
+        <div class="card"><div class="kicker">Garage · 10 frames</div><table class="metric-table"><tr><th>Pair</th><th>Matches</th><th>Inliers</th></tr><tr><td>1→2</td><td>61</td><td>53</td></tr><tr><td>2→3</td><td>91</td><td>68</td></tr><tr><td>3→4</td><td>125</td><td>98</td></tr><tr><td>4→5</td><td>115</td><td>107</td></tr><tr><td>5→6</td><td>64</td><td>47</td></tr><tr><td>6→7</td><td>194</td><td>152</td></tr><tr><td>7→8</td><td>181</td><td>157</td></tr><tr><td>8→9</td><td>97</td><td>64</td></tr><tr><td>9→10</td><td>42</td><td>19</td></tr></table></div>
+        <div class="card"><div class="kicker">Virtual · 5 frames</div><table class="metric-table"><tr><th>Pair</th><th>Matches</th><th>Inliers</th></tr><tr><td>1→2</td><td>46</td><td>27</td></tr><tr><td>2→3</td><td>58</td><td>44</td></tr><tr><td>3→4</td><td>15</td><td>9</td></tr><tr><td>4→5</td><td>37</td><td>21</td></tr></table><p class="small muted">The narrow 3→4 overlap is hardest, yet yields nine geometric inliers.</p></div>
+      </div>
+      <h3>Manual and automatic full-sequence results</h3>
+      <p class="section-summary">The following pairs use identical source images and cylindrical projection. Only the correspondence source changes. Click either result for the full-resolution image; this matters especially for the ten-frame garage panorama.</p>
+      <h3>Outdoor · 5 of 5 frames</h3>
+      <div class="panorama-pair">
+        <figure><span class="pair-label">Manual</span><a href="assets/ex1_manual_full.jpg"><img src="assets/ex1_manual_full.jpg" alt="Five-frame manually aligned outdoor panorama"></a><figcaption>Four transitions, 16 checked landmarks each; 775 px cylinder.</figcaption></figure>
+        <figure><span class="pair-label">Automatic</span><a href="assets/ex1_automatic_full.jpg"><img src="assets/ex1_automatic_full.jpg" alt="Five-frame automatically aligned outdoor panorama"></a><figcaption>Four automatic RANSAC fits; the overall street geometry follows the manual result.</figcaption></figure>
+      </div>
+      <h3>Indoor garage · 10 of 10 frames</h3>
+      <div class="panorama-pair">
+        <figure><span class="pair-label">Manual</span><a href="assets/ex2_manual_full.jpg"><img src="assets/ex2_manual_full.jpg" alt="Ten-frame manually aligned garage panorama"></a><figcaption>Nine manually fitted transitions; 825 px cylinder.</figcaption></figure>
+        <figure><span class="pair-label">Automatic</span><a href="assets/ex2_automatic_full.jpg"><img src="assets/ex2_automatic_full.jpg" alt="Ten-frame automatically aligned garage panorama"></a><figcaption>All nine transitions pass RANSAC; the final pair retains 19 inliers.</figcaption></figure>
+      </div>
+      <h3>Virtual architecture · 5 of 5 frames</h3>
+      <div class="panorama-pair">
+        <figure><span class="pair-label">Manual</span><a href="assets/ex3_manual_full.jpg"><img src="assets/ex3_manual_full.jpg" alt="Five-frame manually aligned virtual panorama"></a><figcaption>Full architectural sweep; 450 px cylinder.</figcaption></figure>
+        <figure><span class="pair-label">Automatic</span><a href="assets/ex3_automatic_full.jpg"><img src="assets/ex3_automatic_full.jpg" alt="Five-frame automatically aligned virtual panorama"></a><figcaption>Architecture remains continuous in both versions; the far terrain has less geometric detail.</figcaption></figure>
+      </div>
+      <h3>Why the garage column ghosts</h3>
+      <p>The near white column shifts against the distant parked cars between overlapping camera views. RANSAC correctly aligns the dominant background, but one global transform cannot also align the column at a different depth. Feather blending averages both projected column edges, producing a translucent double contour. This is mainly capture parallax exposed by the global-warp and blending model, rather than a failed correspondence fit.</p>
+      <figure class="wide-figure"><a href="assets/ex2_column_comparison.jpg"><img src="assets/ex2_column_comparison.jpg" alt="Garage column crop comparing feather blending and variance-guided source selection"></a><figcaption><strong>Diagnostic.</strong> Left: required feather blend. Right: a variance-guided dominant-source blend sharpens parts of the car and pillar, but a second pillar edge remains. A local seam, local warp, or depth-aware alignment would be needed to remove it reliably; we retain feathering as the required baseline. <a href="assets/ex2_automatic_deghost.jpg">Open the full diagnostic mosaic.</a></figcaption></figure>
+      <div class="takeaway"><strong>Comparison.</strong> The main structures agree between the manual and automatic panoramas. Differences are concentrated near depth changes, moving cars, and repetitive texture. A single global warp per frame cannot correct parallax, and simple feathering cannot remove every ghost. The full-view cylinder avoids the severe edge stretching that limited the earlier three-frame-only report.</div>
+    </section>
+
+    <section id="conclusion" class="report-section">
+      <div class="section-head"><div><div class="kicker">Conclusion</div><h2>What the panorama needs</h2></div><span class="tag">A + B complete</span></div>
+      <div class="conclusion-grid">
+        <div class="card"><h3>Reliable correspondences</h3><p>Sixteen checked points per pair give a manual reprojection RMS range of 0.49–2.80 px. Automatic detection and descriptor matching recover enough geometrically consistent points in all 17 pairs.</p></div>
+        <div class="card"><h3>The right target surface</h3><p>Planar homographies work for moderate spans and rectification. A cylinder keeps all 20 input frames useful across three wide sweeps without forcing a single unstable planar canvas.</p></div>
+        <div class="card"><h3>Visible limits</h3><p>The deeper floor rectification enlarges distant pixels and loses sharpness. Nearby objects create parallax ghosts. These are source-resolution and scene-geometry limits, not missing interpolation samples.</p></div>
+      </div>
+      <div class="method">
+        <div class="card"><div class="kicker">Reproducibility</div><h3>Run from the archive root</h3><pre>python code/main.py --data-root code/data --output results</pre><p>The archive contains the resized source frames, final correspondence JSON, Python implementation, this offline HTML report, and a printed PDF. The <a href="metrics.json">metrics JSON</a> records all fitted matrices, per-pair counts, and mosaic canvas sizes.</p></div>
+        <div class="card"><div class="kicker">Sources</div><h3>Course and method</h3><p><a href="https://cal-cs180.github.io/fa26/hw/proj3/partA.html">Official Part A</a> · <a href="https://cal-cs180.github.io/fa26/hw/proj3/partB.html">Official Part B</a> · <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2005/06/cvpr05.pdf">Brown, Szeliski, and Winder: Multi-Image Matching Using Multi-Scale Oriented Patches</a>.</p><p>The descriptor implementation uses the axis-aligned 8×8 simplification specified for this project.</p></div>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap">CS 180 · Project 4 · [Auto]Stitching Photo Mosaics &nbsp;·&nbsp; Manual geometry, automatic features, and full-sequence cylindrical panoramas.</footer>
+</body>
+</html>
